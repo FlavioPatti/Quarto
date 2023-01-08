@@ -15,8 +15,8 @@ NUM_GENERATIONS = 20
 OFFSPRING_SIZE = 50
 TOURNAMENT_SIZE = 5
 GENETIC_OPERATOR_RANDOMNESS = 0.5
-CROSSOVER_THRESHOLD = 0.2
-MUTATION_THRESHOLD = 0.2
+CROSSOVER_THRESHOLD = 0.05
+MUTATION_THRESHOLD = 0.05
 
 
 class GeneticAlgorithm():
@@ -133,14 +133,28 @@ class GeneticAlgorithm():
             for i in range(OFFSPRING_SIZE):
                 if random.random() < GENETIC_OPERATOR_RANDOMNESS:                         
                     p = self.tournament(population)                  
-                    o = self.mutation(p.genome)                    
+                    o = self.mutation(p.genome)
+
+                    f = self.compute_fitness(o)
+
+                    if (f > p.fitness):
+                        offspring.append(Individual(o, f)) 
+                    else:
+                        offspring.append(p) 
+
                 else:                                          
                     p1 = self.tournament(population)                 
                     p2 = self.tournament(population)
+
                     o = self.cross_over(p1.genome, p2.genome)            
-                f = self.compute_fitness(o)                                                          
-                offspring.append(Individual(o, f))  
-           
+                    f = self.compute_fitness(o)
+
+                    tmp = [p1, p2, Individual(o,f)]
+                    tmp = sorted(tmp, key=lambda i: i[1], reverse = True)
+
+                    offspring.append(tmp[0])
+                    offspring.append(tmp[1])  
+                                                           
             population += offspring
 
             #population = set(population)  #remove duplicate
