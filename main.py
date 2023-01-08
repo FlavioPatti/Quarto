@@ -6,7 +6,7 @@ import argparse
 import random
 import quarto
 import copy
-from genetic_algorithm import GeneticAlgorithm
+from quarto.genetic_algorithm import GeneticAlgorithm
 
 class RandomPlayer(quarto.Player):
     """Random player"""
@@ -15,38 +15,54 @@ class RandomPlayer(quarto.Player):
         super().__init__(quarto)
 
     def choose_piece(self):
-        return random.randint(0, 15)
+        piece = random.randint(0, 15)
+        #print("Random chooses piece - ", piece)
+        return piece
 
     def place_piece(self):
-        return random.randint(0, 3), random.randint(0, 3) #column, row
+        pos = (random.randint(0, 3), random.randint(0, 3))
+        #print("Random chooses pos - ", pos)
+        return pos #column, row
     
 class GeneticPlayer(quarto.Player):
     """GA player"""
 
     def __init__(self, quarto: quarto.Quarto):
-        super().__init__(quarto)
+        #super().__init__(quarto)
         self.geneticAlgorithm = GeneticAlgorithm(quarto)
 
+        self.piece_to_give = None
+        self.pos_chosen = None
+
     def choose_piece(self):
-        return self.geneticAlgorithm.my_move()[0]
+        # How to handle first case??
+        #print("G chooses piece - ", self.piece_to_give)
+        return self.piece_to_give
 
     def place_piece(self):
-        return self.geneticAlgorithm.my_move()[1]
+        (self.piece_to_give, self.pos_chosen) = self.geneticAlgorithm.my_move()
+        #print("G chooses pos - ", self.pos_chosen)
+        return self.pos_chosen
 
 
 def main():
-    
     win = 0
-    num_matches = 1
-    game = quarto.Quarto()
+    num_matches = 100
+    
     for i in range(num_matches):
+        game = quarto.Quarto()
+        
+        #print("-------- PARTITA ", i)
         game.set_players((RandomPlayer(game), GeneticPlayer(game))) #player 0 = random = avversario, player 1 = risky = io
         winner = game.run()
         if winner == 1:
             win = win + 1
-        game.clear()
+        #print("Winner is: ", winner)
+        win_rate = win / (i+1)
+        print(f"Match # {i} -> Winner -> {type(game._Quarto__players[winner]).__name__} -> Win rate = {win_rate}")
+
     win_rate = win / num_matches
-    print(f"win rate = {win_rate}")
+    print(f"Win rate = {win_rate}")
 
 
 
