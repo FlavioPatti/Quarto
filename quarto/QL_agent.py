@@ -43,8 +43,9 @@ class QL_Agent(quarto.Player):
         print(state)
         current_action=self.update_q(state)
         pos=current_action//16
-        x=pos//4
-        y=pos%4
+        y=pos//4
+        x=pos%4
+        print(x , "-" , y)
         return (x,y)
 
     def makeKey(self, state):
@@ -99,8 +100,8 @@ class QL_Agent(quarto.Player):
             reward=0
             quarto_bis=copy.deepcopy(self.__quarto)
             pos=current_action//16
-            x=pos//4
-            y=pos%4
+            y=pos//4
+            x=pos%4
             quarto_bis.place(x,y)
             if quarto_bis.check_winner()>-1:
                 reward = self.WIN_REWARD
