@@ -7,6 +7,7 @@ import random
 import quarto
 import copy
 from quarto.genetic_algorithm import GeneticAlgorithm
+from quarto.QL_agent import QL_Agent
 
 class RandomPlayer(quarto.Player):
     """Random player"""
@@ -311,7 +312,7 @@ def main():
         game = quarto.Quarto()
         
         #print("-------- PARTITA ", i)
-        game.set_players((RandomPlayer(game), GeneticPlayer(game))) #player 0 = random = avversario, player 1 = risky = io
+        game.set_players((RandomPlayer(game), QL_Agent(game))) #player 0 = random = avversario, player 1 = risky = io
         winner = game.run()
         if winner == 1:
             win = win + 1
