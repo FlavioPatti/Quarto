@@ -9,9 +9,9 @@ class QL_Agent(quarto.Player):
     previous_state = previous_action = None
     WIN_REWARD, LOSS_REWARD =   100, -100 #1, -1
 
-    def __init__(self, quarto:quarto.Quarto, k = None, epsilon = 1, epsilon_decay=0.999, min_epsilon=0.1, learning_rate = 0.1, discount_factor = 0.9):
+    def __init__(self, quarto:quarto.Quarto, k = None, epsilon = 1, epsilon_decay=0.999, min_epsilon=0.1, learning_rate = 0.5, discount_factor = 0.9):
         self.__quarto=quarto
-        self.number_rewards=0 #FOR DEBUGGING
+        #self.number_rewards=0 #FOR DEBUGGING
         #q is a function f: State x Action -> R and is internally represented as a Map.
 
         #alpha is the learning rate and determines to what extent the newly acquired 
@@ -66,8 +66,8 @@ class QL_Agent(quarto.Player):
 
     def getActions(self, state):
         '''returns a list of possible actions for a given state'''
-        if self.is_terminal():
-            return [None]
+        #if self.is_terminal():
+        #    return [None]
         all_pieces={ x for x in range(len(state)-1)}
         available_pieces=all_pieces - set(state)
         available_positions=[]
@@ -92,41 +92,86 @@ class QL_Agent(quarto.Player):
             # Highest reward -> Low exploration rate
             q_values = [self.q[(tuple(state),i)] for i in possActions]
             return possActions[np.argmax(q_values)]
+    """
     # Updates the Q-table as specified by the standard Q-learning algorithm
-    def update_q(self, state):
+    def update_q(self, state, winner=None):
+        if winner is not None:
+            current_action = self.previous_state = self.previous_action = None
+        else:
       
-        self.makeKey(state)
-        current_action = self.policy(state)
+            self.makeKey(state)
+            current_action = self.policy(state)
 
-        if self.previous_action is not None:
-            reward=0
-            quarto_bis=copy.deepcopy(self.__quarto)
-            pos=current_action//16
-            y=pos//4
-            x=pos%4
-            quarto_bis.place(x,y)
-            if quarto_bis.check_winner()>-1:
-                reward = self.WIN_REWARD
-            else:
-                board=quarto_bis.get_board_status()
-                for yi, yp in enumerate(board):
-                    for xi, xp in enumerate(yp):
-                        quarto_bis.select(current_action % 16)
-                        if xp==-1:
-                            quarto_bis.place(xi,yi)
-                            if quarto_bis.check_winner()>-1:
-                                reward = self.LOSS_REWARD
-                                break
-                            quarto_bis.select(-1)
-                            quarto_bis.place(xi,yi)
+            if self.previous_action is not None:
+                reward=0
+                quarto_bis=copy.deepcopy(self.__quarto)
+                pos=current_action//16
+                y=pos//4
+                x=pos%4
+                quarto_bis.place(x,y)
+                if quarto_bis.check_winner()>-1:
+                    reward = self.WIN_REWARD
+                else:
+                    board=quarto_bis.get_board_status()
+                    for yi, yp in enumerate(board):
+                        for xi, xp in enumerate(yp):
+                            quarto_bis.select(current_action % 16)
+                            if xp==-1:
+                                quarto_bis.place(xi,yi)
+                                if quarto_bis.check_winner()>-1:
+                                    reward = self.LOSS_REWARD
+                                    break
+                                quarto_bis.select(-1)
+                                quarto_bis.place(xi,yi)
 
-            print(reward)
-            self.number_rewards+=1
+                print(reward)
+                self.number_rewards+=1
+                maxQ = max(self.q[(tuple(state), a)] for a in self.getActions(state))
+                self.q[(tuple(self.previous_state), self.previous_action)] += \
+                    self.learning_rate * (reward + self.discount_factor * maxQ - \
+                        self.q[(tuple(self.previous_state), self.previous_action)])
+
+            self.previous_state, self.previous_action = tuple(state), current_action
+        return current_action
+        
+    """
+    # Updates the Q-table as specified by the standard Q-learning algorithm
+    def update_q(self, state, winner=None):
+        reward=0
+        #print("winner is: ", winner)
+        
+        if winner==1:
+            reward=self.WIN_REWARD
+            self.q[(tuple(self.previous_state), self.previous_action)] += \
+                self.learning_rate * (reward - self.q[(tuple(self.previous_state), self.previous_action)])
+            current_action = self.previous_state = self.previous_action = None
+        elif winner==0:
+            reward=self.LOSS_REWARD
             maxQ = max(self.q[(tuple(state), a)] for a in self.getActions(state))
             self.q[(tuple(self.previous_state), self.previous_action)] += \
                 self.learning_rate * (reward + self.discount_factor * maxQ - \
                     self.q[(tuple(self.previous_state), self.previous_action)])
+            #print("final loss reward: ", self.q[(tuple(self.previous_state), self.previous_action)])
+            current_action = self.previous_state = self.previous_action = None
+        elif winner==-1:
+            self.q[(tuple(self.previous_state), self.previous_action)] += \
+                self.learning_rate * (0 - self.q[(tuple(self.previous_state), self.previous_action)])
+            current_action = self.previous_state = self.previous_action = None
+            
+        else:
+      
+            self.makeKey(state)
+            current_action = self.policy(state)
 
-        self.previous_state, self.previous_action = tuple(state), current_action
+            if self.previous_action is not None:
+
+                #self.number_rewards+=1
+                maxQ = max(self.q[(tuple(state), a)] for a in self.getActions(state))
+                self.q[(tuple(self.previous_state), self.previous_action)] += \
+                    self.learning_rate * (reward + self.discount_factor * maxQ - \
+                        self.q[(tuple(self.previous_state), self.previous_action)])
+
+            self.previous_state, self.previous_action = tuple(state), current_action
+        #print(reward)
         return current_action
         

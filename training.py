@@ -18,6 +18,7 @@ def cycle(game, player1, num_matches):
         game.set_players((RandomPlayer(game), player1)) #player 0 = random = avversario, player 1 = risky = io
         winner = game.run()
         player1.epsilon=max(player1.epsilon*player1.epsilon_decay,player1.min_epsilon)
+        player1.update_q(player1.previous_state, winner)
         if winner == 1:
             win = win + 1
         elif winner == -1:
@@ -33,8 +34,13 @@ def cycle(game, player1, num_matches):
         #else:
             #print(f"Match # {i} -> Winner -> Both -> Win rate = {win_rate}, Draw rate = {draw_rate} Loss rate = {loss_rate}")
     #print(player1.q)
+    #counter_r=0
+    #for v in player1.q.values():
+    #    if  v>1 or v<-1 :
+    #        counter_r+=1
+    #print("count of cool rewards: ", counter_r)
     print("epsilon= ", player1.epsilon)
-    print("rewards= ", player1.number_rewards)        
+    #print("rewards= ", player1.number_rewards)        
     win_rate = win / num_matches
     #print(f"Win rate = {win_rate}")
     return win_rate
@@ -42,8 +48,8 @@ def cycle(game, player1, num_matches):
 if __name__ == '__main__':
     game = quarto.Quarto()
     player1=QL_Agent(game)
-    num_matches = 500
-    cycles=1
+    num_matches = 1000
+    cycles=5
     for i in range(cycles):
         win_rate=cycle(game, player1,num_matches)
         print("cycle ", i+1,": ",win_rate)
