@@ -7,10 +7,11 @@ class QL_Agent(quarto.Player):
     action_space = 256
     q = {}
     previous_state = previous_action = None
-    WIN_REWARD, LOSS_REWARD = 1, -1
+    WIN_REWARD, LOSS_REWARD =   100, -100 #1, -1
 
-    def __init__(self, quarto:quarto.Quarto, k = None, epsilon = 1, learning_rate = 1, discount_factor = 1):
+    def __init__(self, quarto:quarto.Quarto, k = None, epsilon = 1, epsilon_decay=0.999, min_epsilon=0.1, learning_rate = 0.1, discount_factor = 0.9):
         self.__quarto=quarto
+        self.number_rewards=0 #FOR DEBUGGING
         #q is a function f: State x Action -> R and is internally represented as a Map.
 
         #alpha is the learning rate and determines to what extent the newly acquired 
@@ -21,7 +22,9 @@ class QL_Agent(quarto.Player):
         #epsilon serves as the exploration rate and determines the probability 
         #that the agent, in the learning process, will randomly select an action
 
-        self.epsilon = epsilon                      # epsilon   -> the higher epsilon,  the more random I act
+        self.epsilon = epsilon   # epsilon   -> the higher epsilon,  the more random I act
+        self.epsilon_decay=epsilon_decay
+        self.min_epsilon=0.1                      
         self.learning_rate = learning_rate          # alpha     -> the higher alpha,    the more I replace "q"
         self.discount_factor = discount_factor      # gamma     -> the higher gamma,    the more I favor long-term reward
         # as I get closer and closer to the deadline, my preference for near-term reward should increase, 
@@ -40,12 +43,12 @@ class QL_Agent(quarto.Player):
             for xp in yp:
                 state.append(xp)
         state.append(self.__quarto.get_selected_piece())
-        print(state)
+        #print(state)
         current_action=self.update_q(state)
         pos=current_action//16
         y=pos//4
         x=pos%4
-        print(x , "-" , y)
+        #print(x , "-" , y)
         return (x,y)
 
     def makeKey(self, state):
@@ -82,14 +85,13 @@ class QL_Agent(quarto.Player):
         possActions = list(self.getActions(state))
 
         if np.random.random() < self.epsilon:
+            # Random -> High exploration rate
+            chosen_action_idx = np.random.randint(0, len(possActions))
+            return possActions[chosen_action_idx]  
+        else:
             # Highest reward -> Low exploration rate
             q_values = [self.q[(tuple(state),i)] for i in possActions]
             return possActions[np.argmax(q_values)]
-        else:
-            # Random -> High exploration rate
-            chosen_action_idx = np.random.randint(0, len(possActions))
-            return possActions[chosen_action_idx]
-
     # Updates the Q-table as specified by the standard Q-learning algorithm
     def update_q(self, state):
       
@@ -118,7 +120,8 @@ class QL_Agent(quarto.Player):
                             quarto_bis.select(-1)
                             quarto_bis.place(xi,yi)
 
-
+            print(reward)
+            self.number_rewards+=1
             maxQ = max(self.q[(tuple(state), a)] for a in self.getActions(state))
             self.q[(tuple(self.previous_state), self.previous_action)] += \
                 self.learning_rate * (reward + self.discount_factor * maxQ - \

@@ -233,7 +233,7 @@ class RiskyPlayer(quarto.Player):
                     if self.check_winning_move(game_copy):
                         winning_move = 1
                         print(f"risky piazza in posizione {i}-{j}")
-                        return i, j;
+                        return i, j
         """Altrimenti faccio una mossa lines of like se possibile"""
         """lines of like = controllo se ci sono pezzi che hanno almeno una caratteristica in comune"""    
         piece_ok = False    
@@ -306,14 +306,17 @@ def main():
     win = 0
     draw = 0
     loss = 0
-    num_matches = 1
+    num_matches = 3000
+    game = quarto.Quarto()
+    player1=QL_Agent(game)
     
     for i in range(num_matches):
-        game = quarto.Quarto()
         
+        game.reset()
         #print("-------- PARTITA ", i)
-        game.set_players((RandomPlayer(game), QL_Agent(game))) #player 0 = random = avversario, player 1 = risky = io
+        game.set_players((RandomPlayer(game), player1)) #player 0 = random = avversario, player 1 = risky = io
         winner = game.run()
+        player1.epsilon=max(player1.epsilon*player1.epsilon_decay,player1.min_epsilon)
         if winner == 1:
             win = win + 1
         elif winner == -1:
@@ -328,7 +331,8 @@ def main():
             print(f"Match # {i} -> Winner -> {type(game._Quarto__players[winner]).__name__} -> Win rate = {win_rate}, Draw rate = {draw_rate} Loss rate = {loss_rate}")
         else:
             print(f"Match # {i} -> Winner -> Both -> Win rate = {win_rate}, Draw rate = {draw_rate} Loss rate = {loss_rate}")
-            
+    #print(player1.q)
+    print(player1.epsilon)        
     win_rate = win / num_matches
     print(f"Win rate = {win_rate}")
 
