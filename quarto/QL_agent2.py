@@ -2,14 +2,15 @@ import numpy as np
 import quarto
 import random
 import copy
+import pickle
 
-class QL_Agent(quarto.Player):
+class QL_Agent2(quarto.Player):
     action_space = 256
     q = {}
     previous_state = previous_action = None
     WIN_REWARD, LOSS_REWARD =   100, -100 #1, -1
 
-    def __init__(self, quarto:quarto.Quarto, k = None, epsilon = 1, epsilon_decay=0.9998, min_epsilon=0.1, learning_rate = 1, discount_factor = 0.9):
+    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, k = None, epsilon = 1, epsilon_decay=0.9998, min_epsilon=0.1, learning_rate = 1, discount_factor = 0.9):
         super().__init__(quarto)
         #self.number_rewards=0 #FOR DEBUGGING
         #q is a function f: State x Action -> R and is internally represented as a Map.
@@ -21,7 +22,8 @@ class QL_Agent(quarto.Player):
 
         #epsilon serves as the exploration rate and determines the probability 
         #that the agent, in the learning process, will randomly select an action
-
+        self.train_mode=train_mode
+        self.pretrained=pretrained
         self.epsilon = epsilon   # epsilon   -> the higher epsilon,  the more random I act
         self.epsilon_decay=epsilon_decay
         self.min_epsilon=0.1                      
@@ -44,21 +46,33 @@ class QL_Agent(quarto.Player):
                 state.append(xp)
         state.append(self.get_game().get_selected_piece())
         #print(state)
-        current_action=self.update_q(state)
+        if self.train_mode:
+            current_action=self.update_q(state)
+        else:
+            if not self.pretrained:
+                current_action=self.policy(state)
+                self.previous_state, self.previous_action = state, current_action
+            else:
+                possActions=self.getActions(state)
+                actions=self.load(state)
+                if actions is not None:
+                    current_action=np.argmax(actions[possActions])
+                else:
+                    chosen_action_idx = np.random.randint(0, len(possActions))
+                    current_action=possActions[chosen_action_idx]
+                self.previous_state, self.previous_action = state, current_action
+
         pos=current_action//16
         y=pos//4
         x=pos%4
         #print(x , "-" , y)
         return (x,y)
 
-    def makeKey(self, state):
-        possActions = list(self.getActions(state))
-        someAction = possActions[0]
-
-        # generating Q Table
-        if (tuple(state), someAction) not in self.q:
-            for i in possActions:
-                self.q[(tuple(state), i)] = 0#np.random.uniform(0.0, 0.01)
+    def make_and_get_action_values(self, state, possActions):
+        state=tuple(state)
+        if self.train_mode==True:
+            return self.q.setdefault(state, np.zeros(self.action_space))[possActions]
+        return self.q.get(state, np.zeros(self.action_space))[possActions]
 
     def is_terminal(self):
         '''returns True if the state is terminal'''
@@ -87,14 +101,14 @@ class QL_Agent(quarto.Player):
         This function takes a state and chooses the action for that state that will lead to the maximum reward'''
         possActions = self.getActions(state)
 
-        if np.random.random() < self.epsilon:
+        if np.random.random() < self.epsilon and self.train_mode==True:
             # Random -> High exploration rate
             chosen_action_idx = np.random.randint(0, len(possActions))
             return possActions[chosen_action_idx]  
         else:
             # Highest reward -> Low exploration rate
-            q_values = [self.q[(tuple(state),i)] for i in possActions]
-            return possActions[np.argmax(q_values)]
+            action_values = self.make_and_get_action_values(state, possActions)
+            return possActions[np.argmax(action_values)]
     """
     # Updates the Q-table as specified by the standard Q-learning algorithm
     def update_q(self, state, winner=None):
@@ -145,36 +159,81 @@ class QL_Agent(quarto.Player):
         
         if winner==1:
             reward=self.WIN_REWARD
-            self.q[(tuple(self.previous_state), self.previous_action)] += \
-                self.learning_rate * (reward - self.q[(tuple(self.previous_state), self.previous_action)])
+            self.q[tuple(self.previous_state)][self.previous_action] += \
+                    self.learning_rate * (reward  - self.q[tuple(self.previous_state)][self.previous_action])
             current_action = self.previous_state = self.previous_action = None
         elif winner==0:
             reward=self.LOSS_REWARD
-            maxQ = max(self.q[(tuple(state), a)] for a in self.getActions(state))
-            self.q[(tuple(self.previous_state), self.previous_action)] += \
+            possibleActions=self.getActions(state)
+            action_values = self.make_and_get_action_values(state, possibleActions)
+            maxQ = max(action_values)
+            self.q[tuple(self.previous_state)][self.previous_action] += \
                 self.learning_rate * (reward + self.discount_factor * maxQ - \
-                    self.q[(tuple(self.previous_state), self.previous_action)])
+                    self.q[tuple(self.previous_state)][self.previous_action])
             #print("final loss reward: ", self.q[(tuple(self.previous_state), self.previous_action)])
             current_action = self.previous_state = self.previous_action = None
         elif winner==-1:
-            self.q[(tuple(self.previous_state), self.previous_action)] += \
-                self.learning_rate * (reward - self.q[(tuple(self.previous_state), self.previous_action)])
+            self.q[tuple(self.previous_state)][self.previous_action] += \
+                    self.learning_rate * (reward  - self.q[tuple(self.previous_state)][self.previous_action])
             current_action = self.previous_state = self.previous_action = None
             
         else:
       
-            self.makeKey(state)
             current_action = self.policy(state)
 
             if self.previous_action is not None:
 
                 #self.number_rewards+=1
-                maxQ = max(self.q[(tuple(state), a)] for a in self.getActions(state))
-                self.q[(tuple(self.previous_state), self.previous_action)] += \
+                possibleActions=self.getActions(state)
+                action_values = self.make_and_get_action_values(state, possibleActions)
+                maxQ = max(action_values)
+                self.q.setdefault(tuple(self.previous_state), np.zeros(self.action_space))
+                self.q[tuple(self.previous_state)][self.previous_action] += \
                     self.learning_rate * (reward + self.discount_factor * maxQ - \
-                        self.q[(tuple(self.previous_state), self.previous_action)])
+                        self.q[tuple(self.previous_state)][self.previous_action])
 
             self.previous_state, self.previous_action = state, current_action
         #print(reward)
         return current_action
+
+    def save(self):
+        # Save the q-table on the disk for future use
+        """
+        for i, qtuple in enumerate(self.q.items()):
+            if i==0:
+                f=open('player.bin', 'wb') 
+                pickle.dump(qtuple, f, protocol=4)
+                f.close()
+            elif i==1:
+                f=open('player.bin', 'ab') 
+                pickle.dump(qtuple, f, protocol=4)
+            else:
+                pickle.dump(qtuple, f, protocol=4)
+        f.close()
+        """
+
+        with open('player.txt', 'w') as f:
+            f.write(str(self.q))
+            
+
+    def load(self,state=None):
+        with open('player.txt', 'r') as f:
+            print(f.readline())
+            #lines = [line for line in f]
+        """
+        with open('player.bin', 'rb') as f:
+            count=0
+            while True:
+                count+=1
+                try:
+                    qtuple=pickle.load(f)
+                except EOFError:
+                    break
+                
+                if count==0:
+                    print(qtuple)
+                if qtuple[0]==tuple(state):
+                    return qtuple[1]
+        """
+        return None
         

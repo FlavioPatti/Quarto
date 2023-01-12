@@ -5,8 +5,10 @@ import quarto
 import copy
 from quarto.genetic_algorithm import GeneticAlgorithm
 from quarto.QL_agent import QL_Agent
+from quarto.QL_agent2 import QL_Agent2
+from quarto.QL_agent3 import QL_Agent3
 from main import RandomPlayer
-def cycle(game, player1, num_matches):
+def cycle(game, player0, player1, num_matches):
     win = 0
     draw = 0
     loss = 0
@@ -15,7 +17,7 @@ def cycle(game, player1, num_matches):
         
         game.reset()
         #print("-------- PARTITA ", i)
-        game.set_players((RandomPlayer(game), player1)) #player 0 = random = avversario, player 1 = risky = io
+        game.set_players((player0, player1)) 
         winner = game.run()
         player1.epsilon=max(player1.epsilon*player1.epsilon_decay,player1.min_epsilon)
         player1.update_q(player1.previous_state, winner)
@@ -47,10 +49,37 @@ def cycle(game, player1, num_matches):
 
 if __name__ == '__main__':
     game = quarto.Quarto()
-    player1=QL_Agent(game)
+    player0=RandomPlayer(game)
+    player1=QL_Agent3(game)
     num_matches = 1000
-    cycles=5
+    cycles=20
+    #first cycle of training against random player
     for i in range(cycles):
-        win_rate=cycle(game, player1,num_matches)
-        print("cycle ", i+1,": ",win_rate)
+        win_rate=cycle(game, player0,player1, num_matches) #player0 for testing, player1 for training
+        print("cycle ", i+1," win rate: ",win_rate)
+    player1.save()
+    player0=QL_Agent3(player1.get_game(),False,True)
+    num_matches = 1000
+    cycles=20
+    #second cycle of training against previously pretrained QL agent
+    for i in range(cycles):
+        win_rate=cycle(game, player0,player1, num_matches) #player0 for testing, player1 for training
+        print("cycle ", i+1," win rate: ",win_rate)
+    player1.save()
+    player0=QL_Agent3(player1.get_game(),False,True)
+    num_matches = 1000
+    cycles=20
+    #second cycle of training against previously pretrained QL agent
+    for i in range(cycles):
+        win_rate=cycle(game, player0,player1, num_matches) #player0 for testing, player1 for training
+        print("cycle ", i+1," win rate: ",win_rate)
+    player1.save()
+    player0=RandomPlayer(player1.get_game())
+    num_matches = 1000
+    cycles=20
+    #second cycle of training against previously pretrained QL agent
+    for i in range(cycles):
+        win_rate=cycle(game, player0,player1, num_matches) #player0 for testing, player1 for training
+        print("cycle ", i+1," win rate: ",win_rate)
+    player1.save()
     
