@@ -7,7 +7,6 @@ import random
 import quarto
 import copy
 from quarto.genetic_algorithm import GeneticAlgorithm
-from quarto.QL_agent import QL_Agent
 import numpy as np
 
 class RandomPlayer(quarto.Player):

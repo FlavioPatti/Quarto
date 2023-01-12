@@ -27,7 +27,7 @@ class QL_Agent3(quarto.Player):
         self.pretrained=pretrained
         self.epsilon = epsilon   # epsilon   -> the higher epsilon,  the more random I act
         self.epsilon_decay=epsilon_decay
-        self.min_epsilon=0.1                      
+        self.min_epsilon=min_epsilon                      
         self.learning_rate = learning_rate          # alpha     -> the higher alpha,    the more I replace "q"
         self.discount_factor = discount_factor # gamma     -> the higher gamma,    the more I favor long-term reward
         if self.pretrained==True:
@@ -195,6 +195,11 @@ class QL_Agent3(quarto.Player):
             self.previous_state, self.previous_action = state, current_action
         #print(reward)
         return current_action
+
+    def learn(self,winner):
+        self.update_q(self.previous_state, winner)
+        self.epsilon=max(self.epsilon*self.epsilon_decay,self.min_epsilon)
+        
 
     def save(self):
         # Save the q-table on the disk for future use 
