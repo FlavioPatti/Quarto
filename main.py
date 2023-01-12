@@ -212,11 +212,11 @@ class RiskyPlayer(quarto.Player):
                             if self.check_winning_move(game_copy):
                                 winning_move = 1
                 if winning_move == 0:
-                    print(f"risky sceglie pezzo {piece}")
+                    #print(f"risky sceglie pezzo {piece}")
                     return piece
         "Altrimenti do un pezzo random"
         piece = random.randint(0,15)
-        print(f"risky sceglie pezzo {piece}")
+        #print(f"risky sceglie pezzo {piece}")
         return piece
 
     def place_piece(self):
@@ -232,7 +232,7 @@ class RiskyPlayer(quarto.Player):
                 if piece_ok == True:
                     if self.check_winning_move(game_copy):
                         winning_move = 1
-                        print(f"risky piazza in posizione {i}-{j}")
+                        #print(f"risky piazza in posizione {i}-{j}")
                         return i, j
         """Altrimenti faccio una mossa lines of like se possibile"""
         """lines of like = controllo se ci sono pezzi che hanno almeno una caratteristica in comune"""    
@@ -246,7 +246,7 @@ class RiskyPlayer(quarto.Player):
                     if piece_ok == True:
                         if self.check_line_of_like(game_copy):
                             line_of_like = 1
-                            print(f"risky piazza in posizione {i}-{j}")
+                            #print(f"risky piazza in posizione {i}-{j}")
                             return i, j;
         """Altrimenti faccio una mossa random""" 
         piece_ok = False
@@ -256,7 +256,7 @@ class RiskyPlayer(quarto.Player):
                 x, y = random.randint(0, 3), random.randint(0, 3)
                 if quarto._Quarto__board[y,x] == -1:
                     piece_ok = True
-                    print(f"risky piazza in posizione {x}-{y}")
+                    #print(f"risky piazza in posizione {x}-{y}")
                     return x, y 
                 
 class GeneticPlayer(quarto.Player):

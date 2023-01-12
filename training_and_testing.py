@@ -3,12 +3,12 @@ import argparse
 import random
 import quarto
 import copy
-from EA.genetic_algorithm import GeneticAlgorithm
-from RL.QL_agent import QL_Agent
-from RL.QL_agent2 import QL_Agent2
 from RL.QL_agent3 import QL_Agent3
 from RL.RL_agent import RL_Agent
+from montecarlo.montecarlo import MonteCarloPlayer
 from main import RandomPlayer
+from main import RiskyPlayer
+from main import GeneticPlayer
 
 
 def train(game, player0, player1, num_matches):
@@ -88,9 +88,9 @@ def eval(game, player0, player1, num_matches):
 
 if __name__ == '__main__':
     game = quarto.Quarto()
-    player0=RandomPlayer(game)
+    player0=RiskyPlayer(game)
     player1=RL_Agent(game)
-    num_matches = 1000
+    num_matches = 100
     cycles=20
     #first train of training against random player
     for i in range(cycles):
@@ -98,8 +98,8 @@ if __name__ == '__main__':
         print("cycle train ", i+1," win rate: ",win_rate)
     player1.save()
     player1.epsilon=1
-    player0=RL_Agent(player1.get_game(),False,True)
-    num_matches = 1000
+    player0=RiskyPlayer(player1.get_game())
+    num_matches = 100
     cycles=20
     #second train of training against previously pretrained QL agent
     for i in range(cycles):
