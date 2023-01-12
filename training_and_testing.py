@@ -11,23 +11,35 @@ from main import RiskyPlayer
 from main import GeneticPlayer
 
 
-def train(game, player0, player1, num_matches):
+def train(game, player0, player1, num_matches,cycles):
     win = 0
     draw = 0
     loss = 0
+    player1.epsilon_decay=1-(1/(num_matches*cycles*0.25))
     for i in range(num_matches):
         
         game.reset()
         #print("-------- PARTITA ", i)
-        game.set_players((player0, player1)) 
+        if i%2==0:
+            game.set_players((player0, player1)) 
+        else:
+            game.set_players((player1, player0)) 
         winner = game.run()
         player1.learn(winner)
-        if winner == 1:
-            win = win + 1
-        elif winner == -1:
-            draw = draw + 1
+        if i%2==0:
+            if winner == 1:
+                win = win + 1
+            elif winner == -1:
+                draw = draw + 1
+            else:
+                loss = loss + 1
         else:
-            loss = loss + 1
+            if winner == 1:
+                loss = loss + 1
+            elif winner == -1:
+                draw = draw + 1
+            else:
+                win = win + 1
         #print("Winner is: ", winner)
         #win_rate = win / (i+1)
         #draw_rate = draw / (i+1)
@@ -57,14 +69,25 @@ def eval(game, player0, player1, num_matches):
         
         game.reset()
         #print("-------- PARTITA ", i)
-        game.set_players((player0, player1)) 
-        winner = game.run()
-        if winner == 1:
-            win = win + 1
-        elif winner == -1:
-            draw = draw + 1
+        if i%2==0:
+            game.set_players((player0, player1)) 
         else:
-            loss = loss + 1
+            game.set_players((player1, player0))
+        winner = game.run()
+        if i%2==0:
+            if winner == 1:
+                win = win + 1
+            elif winner == -1:
+                draw = draw + 1
+            else:
+                loss = loss + 1
+        else:
+            if winner == 1:
+                loss = loss + 1
+            elif winner == -1:
+                draw = draw + 1
+            else:
+                win = win + 1
         #print("Winner is: ", winner)
         #win_rate = win / (i+1)
         #draw_rate = draw / (i+1)
@@ -87,32 +110,35 @@ def eval(game, player0, player1, num_matches):
 
 
 if __name__ == '__main__':
+    print("First training")
     game = quarto.Quarto()
     player0=RiskyPlayer(game)
     player1=RL_Agent(game)
-    num_matches = 100
-    cycles=20
+    num_matches = 10
+    cycles=5
     #first train of training against random player
     for i in range(cycles):
-        win_rate=train(game, player0,player1, num_matches) #player0 for testing, player1 for training
+        win_rate=train(game, player0,player1, num_matches, cycles) #player0 for testing, player1 for training
         print("cycle train ", i+1," win rate: ",win_rate)
     player1.save()
+    print("Second training")
     player1.epsilon=1
     player0=RiskyPlayer(player1.get_game())
-    num_matches = 100
-    cycles=20
+    num_matches = 10
+    cycles=5
     #second train of training against previously pretrained QL agent
     for i in range(cycles):
-        win_rate=train(game, player0,player1, num_matches) #player0 for testing, player1 for training
+        win_rate=train(game, player0,player1, num_matches,cycles) #player0 for testing, player1 for training
         print("cycle train ", i+1," win rate: ",win_rate)
     player1.save()
+    print("Third training")
     player1.epsilon=1
     player0=RL_Agent(player1.get_game(),False,True)
     num_matches = 1000
     cycles=20
     #third train of training against previously pretrained QL agent
     for i in range(cycles):
-        win_rate=train(game, player0,player1, num_matches) #player0 for testing, player1 for training
+        win_rate=train(game, player0,player1, num_matches,cycles) #player0 for testing, player1 for training
         print("cycle train ", i+1," win rate: ",win_rate)
     player1.save()
 
