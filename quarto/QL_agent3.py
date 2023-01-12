@@ -6,11 +6,9 @@ import pickle
 
 class QL_Agent3(quarto.Player):
     action_space = 256
-    q = {}
-    previous_state = previous_action = None
     WIN_REWARD, LOSS_REWARD =   100, -100 #1, -1
 
-    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, k = None, epsilon = 1, epsilon_decay=0.9998, min_epsilon=0.1, learning_rate = 1, discount_factor = 0.9):
+    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9998, min_epsilon=0.1, learning_rate = 1, discount_factor = 0.9):
         super().__init__(quarto)
         #self.number_rewards=0 #FOR DEBUGGING
         #q is a function f: State x Action -> R and is internally represented as a Map.
@@ -22,6 +20,9 @@ class QL_Agent3(quarto.Player):
 
         #epsilon serves as the exploration rate and determines the probability 
         #that the agent, in the learning process, will randomly select an action
+        self.q = {}
+        self.previous_state = None
+        self.previous_action= None
         self.train_mode=train_mode
         self.pretrained=pretrained
         self.epsilon = epsilon   # epsilon   -> the higher epsilon,  the more random I act

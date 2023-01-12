@@ -7,20 +7,23 @@ from quarto.genetic_algorithm import GeneticAlgorithm
 from quarto.QL_agent import QL_Agent
 from quarto.QL_agent2 import QL_Agent2
 from quarto.QL_agent3 import QL_Agent3
+from quarto.RL_agent import RL_Agent
 from main import RandomPlayer
+
+
 def cycle(game, player0, player1, num_matches):
     win = 0
     draw = 0
     loss = 0
-    
     for i in range(num_matches):
         
         game.reset()
         #print("-------- PARTITA ", i)
         game.set_players((player0, player1)) 
         winner = game.run()
-        player1.epsilon=max(player1.epsilon*player1.epsilon_decay,player1.min_epsilon)
-        player1.update_q(player1.previous_state, winner)
+        player1.learn(winner)
+        #player1.epsilon=max(player1.epsilon*player1.epsilon_decay,player1.min_epsilon)
+        #player1.update_q(player1.previous_state, winner)
         if winner == 1:
             win = win + 1
         elif winner == -1:
@@ -47,10 +50,11 @@ def cycle(game, player0, player1, num_matches):
     #print(f"Win rate = {win_rate}")
     return win_rate
 
+
 if __name__ == '__main__':
     game = quarto.Quarto()
     player0=RandomPlayer(game)
-    player1=QL_Agent3(game)
+    player1=RL_Agent(game)
     num_matches = 1000
     cycles=20
     #first cycle of training against random player
@@ -58,7 +62,7 @@ if __name__ == '__main__':
         win_rate=cycle(game, player0,player1, num_matches) #player0 for testing, player1 for training
         print("cycle ", i+1," win rate: ",win_rate)
     player1.save()
-    player0=QL_Agent3(player1.get_game(),False,True)
+    player0=RL_Agent(player1.get_game(),False,True)
     num_matches = 1000
     cycles=20
     #second cycle of training against previously pretrained QL agent
@@ -66,7 +70,7 @@ if __name__ == '__main__':
         win_rate=cycle(game, player0,player1, num_matches) #player0 for testing, player1 for training
         print("cycle ", i+1," win rate: ",win_rate)
     player1.save()
-    player0=QL_Agent3(player1.get_game(),False,True)
+    player0=RL_Agent(player1.get_game(),False,True)
     num_matches = 1000
     cycles=20
     #second cycle of training against previously pretrained QL agent
