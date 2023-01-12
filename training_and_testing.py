@@ -91,37 +91,38 @@ if __name__ == '__main__':
     player0=RandomPlayer(game)
     player1=RL_Agent(game)
     num_matches = 1000
-    trains=20
+    cycles=20
     #first train of training against random player
-    for i in range(trains):
+    for i in range(cycles):
         win_rate=train(game, player0,player1, num_matches) #player0 for testing, player1 for training
         print("cycle train ", i+1," win rate: ",win_rate)
     player1.save()
     player1.epsilon=1
     player0=RL_Agent(player1.get_game(),False,True)
     num_matches = 1000
-    trains=20
+    cycles=20
     #second train of training against previously pretrained QL agent
-    for i in range(trains):
+    for i in range(cycles):
         win_rate=train(game, player0,player1, num_matches) #player0 for testing, player1 for training
         print("cycle train ", i+1," win rate: ",win_rate)
     player1.save()
     player1.epsilon=1
     player0=RL_Agent(player1.get_game(),False,True)
     num_matches = 1000
-    trains=20
+    cycles=20
     #third train of training against previously pretrained QL agent
-    for i in range(trains):
+    for i in range(cycles):
         win_rate=train(game, player0,player1, num_matches) #player0 for testing, player1 for training
         print("cycle train ", i+1," win rate: ",win_rate)
     player1.save()
 
-    print("Evalutation")
+    print("Evaluation")
     game = quarto.Quarto()
     player0=RandomPlayer(game)
     player1=RL_Agent(game,False,True)
     num_matches = 1000
-    trains=20
-    for i in range(trains):
+    cycles=20
+    for i in range(cycles):
         win_rate=eval(game, player0,player1, num_matches) #player0 for testing, player1 for training
         print("cycle eval ", i+1," win rate: ",win_rate)
+    

@@ -8,7 +8,7 @@ class RL_Agent(quarto.Player):
     action_space = 256
     WIN_REWARD, LOSS_REWARD =   100, -100 #1, -1
 
-    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9995, min_epsilon=0.01, learning_rate = 0.15): #0.15):
+    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9995, min_epsilon=0.01, learning_rate = 0.15, discount_factor=0.8): #0.15):
         super().__init__(quarto)
         self.train_mode=train_mode
         self.pretrained=pretrained
@@ -31,6 +31,7 @@ class RL_Agent(quarto.Player):
         self.epsilon_decay=epsilon_decay
         self.min_epsilon=min_epsilon                      
         self.learning_rate = learning_rate          # alpha     -> the higher alpha,    the more I replace "q"
+        self.discount_factor = discount_factor # gamma     -> the higher gamma,    the more I favor long-term reward
         if self.pretrained==True:
             self.load()     
         # as I get closer and closer to the deadline, my preference for near-term reward should increase, 
@@ -129,7 +130,7 @@ class RL_Agent(quarto.Player):
             target=0
         for prev_state, prev_action in reversed(self.state_history):
             reward=self.q[tuple(prev_state)][prev_action]
-            self.q[tuple(prev_state)][prev_action]+= self.learning_rate * (target - self.q[tuple(prev_state)][prev_action])
+            self.q[tuple(prev_state)][prev_action]+= self.learning_rate * (self.discount_factor*target - self.q[tuple(prev_state)][prev_action])
             target +=reward
         self.epsilon=max(self.epsilon*self.epsilon_decay,self.min_epsilon)
         self.state_history = []
