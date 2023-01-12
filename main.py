@@ -6,7 +6,7 @@ import argparse
 import random
 import quarto
 import copy
-from quarto.genetic_algorithm import GeneticAlgorithm
+from EA.genetic_algorithm import GeneticAlgorithm
 import numpy as np
 
 class RandomPlayer(quarto.Player):

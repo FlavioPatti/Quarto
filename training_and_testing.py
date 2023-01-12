@@ -3,11 +3,11 @@ import argparse
 import random
 import quarto
 import copy
-from quarto.genetic_algorithm import GeneticAlgorithm
-from quarto.QL_agent import QL_Agent
-from quarto.QL_agent2 import QL_Agent2
-from quarto.QL_agent3 import QL_Agent3
-from quarto.RL_agent import RL_Agent
+from EA.genetic_algorithm import GeneticAlgorithm
+from RL.QL_agent import QL_Agent
+from RL.QL_agent2 import QL_Agent2
+from RL.QL_agent3 import QL_Agent3
+from RL.RL_agent import RL_Agent
 from main import RandomPlayer
 
 
