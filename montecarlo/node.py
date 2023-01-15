@@ -2,19 +2,27 @@ import random
 from copy import deepcopy
 import numpy as np
 from collections import defaultdict
+import sys, os
+sys.path.append(os.path.abspath(os.path.join('.')))
+import quarto
 
+class Q(quarto.Quarto):
+    def __init__(self, status) -> None:
+        super().__init__() 
+        self._Quarto__board = status
 
 class Node():
-    def __init__(self, game, sel, selected, losing_moves=set()):
+    def __init__(self, status, sel, selected, losing_moves=set()):
         self.n = 0
         self.parent = None
-        self.game = game 
+        self.status = status 
         self.sel = sel 
         self.children = []
         self.pos_moves = self.possible_moves(sel, losing_moves)                                                                                               
         self.pos_next_moves = self.possible_moves(not sel)
         self._results = defaultdict(int)                     
         self.selected = selected
+        self.BOARD_SIDE = 4
 
     def add_Child(self, child):
         self.children.append(child)
@@ -23,7 +31,8 @@ class Node():
         self.parent = parent
 
     def expand(self):
-        game_tmp = deepcopy(self.game)
+        status_tmp = deepcopy(self.status)
+        game_tmp = Q(status_tmp)
         if not self.sel:                                
             action = self.pos_moves.pop(random.randint(0, len(self.pos_moves)-1))        
             game_tmp.select(action)                                                 
@@ -40,40 +49,44 @@ class Node():
                     piece_ok = game_tmp.select(self.choose_random_piece())   
             action = self.pos_moves.pop(random.randint(0, len(self.pos_moves)-1)) 
             game_tmp.place(*action) 
-        child_node = Node(game_tmp, not self.sel, None)
+        child_node = Node(status_tmp, not self.sel, None)
         child_node.set_Parent(self)
         self.children.append([child_node, action])
         return child_node 
 
 
     def balanced_expand(self):
-        game_tmp = deepcopy(self.game)
-        if not self.sel:                                
+        status_tmp = deepcopy(self.status)
+        game_tmp = Q(status_tmp)
+        if not self.sel:                                    
             action = self.pos_moves.pop(random.randint(0, len(self.pos_moves)-1))        
             game_tmp.select(action)                                                 
-            piece_ok = False
-            while not piece_ok:
-                x, y = self.pos_next_moves.pop(random.randint(0, len(self.pos_next_moves)-1))                  
-                piece_ok = game_tmp.place(x, y)
+            x, y = self.pos_next_moves.pop(random.randint(0, len(self.pos_next_moves)-1))                  
+            game_tmp.place(x, y)
         else:
-            piece_ok = False
-            while not piece_ok:
-                if self.selected != None:
-                    piece_ok = game_tmp.select(self.selected)
-                else:
-                    piece_ok = game_tmp.select(self.pos_next_moves.pop(random.randint(0, len(self.pos_next_moves)-1)) )   
+            if self.selected != None:
+                game_tmp.select(self.selected)
+            else:
+                game_tmp.select(self.pos_next_moves.pop(random.randint(0, len(self.pos_next_moves)-1)) )   
             action = self.pos_moves.pop(random.randint(0, len(self.pos_moves)-1)) 
             game_tmp.place(*action) 
-        child_node = Node(game_tmp, not self.sel, None)
+        child_node = Node(status_tmp, not self.sel, None)
         child_node.set_Parent(self)
-        self.children.append([child_node, action])
+        self.children.append([child_node, action])    
         return child_node            
-                                                                    
+
+    def is_terminal_node(self):
+        game = Q(self.status)
+        if game.check_winner() >= 0 or game.check_finished():
+            return True
+        else:
+            return False
+
     def is_fully_expanded(self):
         return len(self.pos_moves) == 0
 
     def possible_moves(self, sel, losing_moves=set()):
-        state = self.game.get_board_status()
+        state = self.status
         if not sel:
             pos_moves = list(set(m for m in range(16)) - set(r for row in state for r in row if r != -1) - losing_moves)
             if len(pos_moves):
@@ -83,16 +96,11 @@ class Node():
         else:
             return [(idxc, idxr) for idxr, row in enumerate(state) for idxc, r in enumerate(row) if r == -1]
 
-    def is_terminal_node(self, game):
-        if game.check_winner() >= 0 or game.check_finished():
-            return True
-        else:
-            return False
-
 
     def rollout(self):
         sel = self.sel
-        game = deepcopy(self.game)
+        status_tmp = deepcopy(self.status)
+        game = Q(status_tmp)
         winner = -1
         if sel:         # vuol dire che lui ha posizionato (tocca a lui scegliere)
             winner = game.check_winner()
@@ -122,7 +130,6 @@ class Node():
         if self.parent:
             self.parent.backpropagate(result)
 
-
     def best_child(self, c_param=1.4):
         choices_weights = [
             (c[0].q() / c[0].n) + c_param * np.sqrt((2 * np.log(self.n) / c[0].n))
@@ -132,11 +139,12 @@ class Node():
 
     def q(self):
         wins = self._results[0]
-        # loses = self._results[1]
+        loses = self._results[1]
         return wins
 
     def choose_random_piece(self) -> int:
-        return random.randint(0, 15)           
+        return random.randint(0, 15) 
+           
 
     def place_random_piece(self) -> tuple[int, int]:
-        return random.randint(0, 3), random.randint(0, 3)  
+        return random.randint(0, 3), random.randint(0, 3)

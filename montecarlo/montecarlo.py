@@ -1,6 +1,9 @@
-import quarto
-from montecarlo import node
 from copy import deepcopy 
+import sys, os
+sys.path.append(os.path.abspath(os.path.join('.')))
+sys.path.append(os.path.dirname(__file__))
+from node import Node
+import quarto
 
 class MonteCarloPlayer(quarto.Player):
     def __init__(self, quarto: quarto.Quarto, node=None) -> None:
@@ -22,29 +25,30 @@ class MonteCarloPlayer(quarto.Player):
                    break
                 else:
                     continue
-        root_node = node.Node(self.get_game(), sel=False, selected=None, losing_moves=losing_moves)
+        root_node = Node(self.get_game().get_board_status(), sel=False, selected=None, losing_moves=losing_moves)
         self.set_root(root_node)
         _, action = self.montecarlo()
         return action            
 
     def place_piece(self) -> tuple[int, int]:
-        root_node = node.Node(self.get_game(), sel=True, selected=self.get_game().get_selected_piece(), losing_moves=None)
+        root_node = Node(self.get_game().get_board_status(), sel=True, selected=self.get_game().get_selected_piece(), losing_moves=None)
         self.set_root(root_node)
         _, action = self.montecarlo()   
         return action   
 
-    def montecarlo(self, num_iteration=10000):
-        for _ in range(0, num_iteration):   
+    def montecarlo(self, num_iteration=500):
+        for _ in range(0, num_iteration):
             v = self.search()
             reward = v.rollout()
             v.backpropagate(reward)
-            #if _ % 1000 == 0:
-            #    print(_)
+            # if _ % 1000 == 0:
+            print(_)
+        # to select best child go for exploitation only
         return self.root.best_child(c_param=0.)
 
     def search(self):                     
         current_node = self.root
-        while not current_node.is_terminal_node(current_node.game):
+        while not current_node.is_terminal_node():
             if not current_node.is_fully_expanded():
                 return current_node.balanced_expand()
             else:
