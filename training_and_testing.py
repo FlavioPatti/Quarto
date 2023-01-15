@@ -120,8 +120,8 @@ def train_by_level(player1, level):
         player1.learning_rate=agents_lrs["random"]
         game=player1.get_game()
         player0=RandomPlayer(game)
-        num_matches = 100
-        cycles=15
+        num_matches = 1000
+        cycles=50
         for i in range(cycles):
             win_rate=train(game, player0,player1, num_matches, cycles) #player0 for testing, player1 for training
             print("cycle train ", i+1," win rate: ",win_rate)
@@ -131,8 +131,8 @@ def train_by_level(player1, level):
         player1.epsilon=1
         game=player1.get_game()
         player0=RiskyPlayer(game)
-        num_matches = 1
-        cycles=10
+        num_matches = 100
+        cycles=20
         for i in range(cycles):
             win_rate=train(game, player0,player1, num_matches,cycles) #player0 for testing, player1 for training
             print("cycle train ", i+1," win rate: ",win_rate)
@@ -143,8 +143,8 @@ def train_by_level(player1, level):
         player1.epsilon=1
         game=player1.get_game()
         player0=MonteCarloPlayer(game)
-        num_matches = 10
-        cycles=10
+        num_matches = 100
+        cycles=20
         for i in range(cycles):
             win_rate=train(game, player0,player1, num_matches,cycles) #player0 for testing, player1 for training
             print("cycle train ", i+1," win rate: ",win_rate)
