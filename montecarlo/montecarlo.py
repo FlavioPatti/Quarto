@@ -2,7 +2,7 @@ from copy import deepcopy
 import sys, os
 sys.path.append(os.path.abspath(os.path.join('.')))
 sys.path.append(os.path.dirname(__file__))
-from node import Node
+from node import Node, Q
 import quarto
 
 class MonteCarloPlayer(quarto.Player):
@@ -15,9 +15,11 @@ class MonteCarloPlayer(quarto.Player):
     
     def choose_piece(self) -> int:
         losing_moves = set()
-        for piece in list(set(m for m in range(16)) - set(r for row in self.get_game().get_board_status() for r in row if r != -1)):
-            for pos in [(idxc, idxr) for idxr, row in enumerate(self.get_game().get_board_status()) for idxc, r in enumerate(row) if r == -1]:
-                game_tmp = deepcopy(self.get_game())
+        status = self.get_game().get_board_status()
+        for piece in list(set(m for m in range(16)) - set(r for row in status for r in row if r != -1)):
+            for pos in [(idxc, idxr) for idxr, row in enumerate(status) for idxc, r in enumerate(row) if r == -1]:
+                status_tmp = deepcopy(status)
+                game_tmp = Q(status_tmp)
                 game_tmp.select(piece) 
                 game_tmp.place(*pos)
                 if game_tmp.check_winner() > -1:
@@ -42,7 +44,7 @@ class MonteCarloPlayer(quarto.Player):
             reward = v.rollout()
             v.backpropagate(reward)
             # if _ % 1000 == 0:
-            print(_)
+            # print(_)
         # to select best child go for exploitation only
         return self.root.best_child(c_param=0.)
 
