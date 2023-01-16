@@ -66,6 +66,9 @@ def eval(game, player0, player1, num_matches):
         
         game.reset()
         #print("-------- PARTITA ", i)
+        game.set_players((player1, player0))
+        winner = game.run()
+        """
         if i%2==0:
             game.set_players((player0, player1)) 
         else:
@@ -85,6 +88,13 @@ def eval(game, player0, player1, num_matches):
                 draw = draw + 1
             else:
                 win = win + 1
+        """
+        if winner == 1:
+            loss = loss + 1
+        elif winner == -1:
+            draw = draw + 1
+        else:
+            win = win + 1
         #print("Winner is: ", winner)
         #win_rate = win / (win+loss)
         #draw_rate = draw / (i+1)
@@ -120,20 +130,20 @@ def train_by_level(player1, level):
         player1.learning_rate=agents_lrs["random"]
         game=player1.get_game()
         player0=RandomPlayer(game)
-        num_matches = 1
-        cycles=1
+        num_matches = 1000
+        cycles=50
         for i in range(cycles):
             win_rate=train(game, player0,player1, num_matches, cycles) #player0 for testing, player1 for training
             print("cycle train ", i+1," win rate: ",win_rate)
         player1.save()
-        """
+        
         print("Second training. Risky Player")
         player1.learning_rate=agents_lrs["risky"]
         player1.epsilon=1
         game=player1.get_game()
         player0=RiskyPlayer(game)
-        num_matches = 1
-        cycles=10
+        num_matches = 1000
+        cycles=50
         for i in range(cycles):
             win_rate=train(game, player0,player1, num_matches,cycles) #player0 for testing, player1 for training
             print("cycle train ", i+1," win rate: ",win_rate)
@@ -151,6 +161,7 @@ def train_by_level(player1, level):
             win_rate=train(game, player0,player1, num_matches,cycles) #player0 for testing, player1 for training
             print("cycle train ", i+1," win rate: ",win_rate)
         player1.save()
+        """
         
         
     else:
@@ -183,12 +194,12 @@ def train_by_level(player1, level):
             if level==3:
                 print("LEVEL 3")    
                 print("Third training: vs montecarlo")
-                player1.learning_rate=agents_lrs["montecarlo-500"]
+                player1.learning_rate=agents_lrs["montecarlo-100"]
                 player1.epsilon=1
                 game=player1.get_game()
                 player0=MonteCarloPlayer(game)
-                num_matches = 10
-                cycles=10
+                num_matches = 100
+                cycles=50
                 for i in range(cycles):
                     win_rate=train(game, player0,player1, num_matches,cycles) #player0 for testing, player1 for training
                     print("cycle train ", i+1," win rate: ",win_rate)
@@ -211,15 +222,15 @@ def train_by_level(player1, level):
 
 if __name__ == '__main__':
     game = quarto.Quarto()
-    training_agent=RL_Agent(game)
-    level=1
+    training_agent=QL_Agent3(game)
+    level=3
 
     train_by_level(training_agent,level)
     
     print("Evaluation")
     game = quarto.Quarto()
-    player0=RandomPlayer(game)
-    player1=RL_Agent(game,False,True)
+    player0=MonteCarloPlayer(game)
+    player1=QL_Agent3(game,False,True)
     num_matches = 1000
     cycles=20
     for i in range(cycles):

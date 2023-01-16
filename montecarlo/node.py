@@ -9,7 +9,19 @@ import quarto
 class Q(quarto.Quarto):
     def __init__(self, status) -> None:
         super().__init__() 
-        self._Quarto__board = status
+        self._board = status
+        self._Quarto__binary_board = self.build_binary_map(status)
+
+    def build_binary_map(self, status):
+        binary_board = np.full(shape=(status.shape[0], status.shape[0], 4), fill_value=np.nan)
+        for piece, pos in [(r,(idxc, idxr)) for idxr, row in enumerate(status) for idxc, r in enumerate(row) if r != -1]:
+            array = np.zeros((status.shape[0]))
+            for pow in range(status.shape[0]):
+                array[-1-pow] = piece % 2
+                piece = piece // 2
+            binary_board[pos][:] = array
+        return binary_board
+
 
 class Node():
     def __init__(self, status, sel, selected, losing_moves=set()):
@@ -147,4 +159,4 @@ class Node():
            
 
     def place_random_piece(self) -> tuple[int, int]:
-        return random.randint(0, 3), random.randint(0, 3)
+        return random.randint(0, 3), random.randint(0, 3) 

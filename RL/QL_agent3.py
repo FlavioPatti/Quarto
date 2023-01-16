@@ -8,8 +8,10 @@ class QL_Agent3(quarto.Player):
     action_space = 256
     WIN_REWARD, LOSS_REWARD =   100, -100 #1, -1
 
-    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9998, min_epsilon=0.1, learning_rate = 1, discount_factor = 0.9):
+    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9998, min_epsilon=0.01, learning_rate = 1, discount_factor = 0.5):
         super().__init__(quarto)
+        self.train_mode=train_mode
+        self.pretrained=pretrained
         #self.number_rewards=0 #FOR DEBUGGING
         #q is a function f: State x Action -> R and is internally represented as a Map.
 
@@ -23,8 +25,6 @@ class QL_Agent3(quarto.Player):
         self.q = {}
         self.previous_state = None
         self.previous_action= None
-        self.train_mode=train_mode
-        self.pretrained=pretrained
         self.epsilon = epsilon   # epsilon   -> the higher epsilon,  the more random I act
         self.epsilon_decay=epsilon_decay
         self.min_epsilon=min_epsilon                      
