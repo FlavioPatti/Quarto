@@ -67,9 +67,7 @@ def eval(game, player0, player1, num_matches):
         
         game.reset()
         #print("-------- PARTITA ", i)
-        game.set_players((player0, player1))
-        winner = game.run()
-        """
+
         if i%2==0:
             game.set_players((player0, player1)) 
         else:
@@ -89,17 +87,10 @@ def eval(game, player0, player1, num_matches):
                 draw = draw + 1
             else:
                 win = win + 1
-        """
-        if winner == 1:
-            win = win + 1
-        elif winner == -1:
-            draw = draw + 1
-        else:
-            loss = loss + 1
         #print("Winner is: ", winner)
         #win_rate = win / (win+loss)
         #draw_rate = draw / (i+1)
-        #loss_rate = loss / (win+loss)
+        #loss_rate = loss / (win+loss)  1
         #if winner == 1 or winner == 0:
             #print(f"Match # {i} -> Winner -> {type(game._Quarto__players[winner]).__name__} -> Win rate = {win_rate}, Draw rate = {draw_rate} Loss rate = {loss_rate}")
         #else:
@@ -223,15 +214,15 @@ def train_by_level(player1, level):
 
 if __name__ == '__main__':
     game = quarto.Quarto()
-    training_agent=QL_Agent3(game)
+    training_agent=RL_Agent(game)
     level=3
 
-    #train_by_level(training_agent,level)
+    train_by_level(training_agent,level)
     
     print("Evaluation")
     game = quarto.Quarto()
     player0=MonteCarloPlayer(game)
-    player1=QL_Agent3(game,False,True)
+    player1=RL_Agent(game,False,True)
     num_matches = 100
     cycles=20
     for i in range(cycles):

@@ -172,7 +172,7 @@ class QL_Agent3(quarto.Player):
                     self.q[tuple(self.previous_state)][self.previous_action])
             #print("final loss reward: ", self.q[(tuple(self.previous_state), self.previous_action)])
             current_action = self.previous_state = self.previous_action = None
-        elif winner==-1:
+        elif winner==-1 or winner==2: #draw
             self.q[tuple(self.previous_state)][self.previous_action] += \
                     self.learning_rate * (reward  - self.q[tuple(self.previous_state)][self.previous_action])
             current_action = self.previous_state = self.previous_action = None
