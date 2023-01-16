@@ -22,12 +22,9 @@ def train(game, player0, player1, num_matches,cycles):
         game.reset()
         #print("-------- PARTITA ", i)
         if i%2==0:
-            game.set_players((player0, player1)) 
-        else:
-            game.set_players((player1, player0)) 
-        winner = game.run()
-        player1.learn(winner)
-        if i%2==0:
+            game.set_players((player0, player1))
+            winner = game.run()
+            player1.learn(winner) 
             if winner == 1:
                 win = win + 1
             elif winner == -1:
@@ -35,12 +32,16 @@ def train(game, player0, player1, num_matches,cycles):
             else:
                 loss = loss + 1
         else:
+            game.set_players((player1, player0))
+            winner = game.run()
+            player1.learn(1-winner)
             if winner == 1:
                 loss = loss + 1
             elif winner == -1:
                 draw = draw + 1
             else:
-                win = win + 1
+                win = win + 1 
+            
         #print("Winner is: ", winner)
         #win_rate = win / (win+loss)
         #draw_rate = draw / (i+1)
@@ -66,7 +67,7 @@ def eval(game, player0, player1, num_matches):
         
         game.reset()
         #print("-------- PARTITA ", i)
-        game.set_players((player1, player0))
+        game.set_players((player0, player1))
         winner = game.run()
         """
         if i%2==0:
@@ -90,11 +91,11 @@ def eval(game, player0, player1, num_matches):
                 win = win + 1
         """
         if winner == 1:
-            loss = loss + 1
+            win = win + 1
         elif winner == -1:
             draw = draw + 1
         else:
-            win = win + 1
+            loss = loss + 1
         #print("Winner is: ", winner)
         #win_rate = win / (win+loss)
         #draw_rate = draw / (i+1)
@@ -225,13 +226,13 @@ if __name__ == '__main__':
     training_agent=QL_Agent3(game)
     level=3
 
-    train_by_level(training_agent,level)
+    #train_by_level(training_agent,level)
     
     print("Evaluation")
     game = quarto.Quarto()
     player0=MonteCarloPlayer(game)
     player1=QL_Agent3(game,False,True)
-    num_matches = 1000
+    num_matches = 100
     cycles=20
     for i in range(cycles):
         win_rate=eval(game, player0,player1, num_matches) #player0 for testing, player1 for training
