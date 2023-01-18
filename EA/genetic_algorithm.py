@@ -25,7 +25,7 @@ class GeneticAlgorithm():
         self.current_game = current_game
         
     def unplace(self, x: int, y: int):
-        self.current_game._Quarto__board[y, x] = -1
+        self.current_game._board[y, x] = -1
     
     def coordinate_tuple_to_index(self, row, col):
         return 4 * row + col
@@ -40,7 +40,7 @@ class GeneticAlgorithm():
 
         for row in range(self.current_game.BOARD_SIDE):
             for col in range(self.current_game.BOARD_SIDE):
-                if self.current_game._Quarto__board[col,row] == -1:
+                if self.current_game._board[col,row] == -1:
                     coord = self.coordinate_tuple_to_index(row, col)
                     list_available_positions.append(coord)
         #print(list_available_positions)
@@ -64,7 +64,7 @@ class GeneticAlgorithm():
 
         for row in range(self.current_game.BOARD_SIDE):
             for col in range(self.current_game.BOARD_SIDE):
-                current_piece = self.current_game._Quarto__board[col,row]
+                current_piece = self.current_game._board[col,row]
                 if current_piece != -1 and len(list_available_pieces) > 0:
                     list_available_pieces.remove(current_piece)
 
@@ -182,7 +182,7 @@ class GeneticAlgorithm():
     
     def winning_pos(self, current_piece):
         old_piece_index = self.current_game._Quarto__selected_piece_index
-        self.current_game._Quarto__selected_piece_index = current_piece
+        self.current_game.__selected_piece_index = current_piece
         
         list_winning_moves = []
         for row in range(BOARD_SIZE):

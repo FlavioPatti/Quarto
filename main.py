@@ -52,13 +52,14 @@ class GeneticPlayer(quarto.Player):
         self.pos_chosen = None
 
     def choose_piece(self):
-        # How to handle first case??
-        #print("G chooses piece - ", self.piece_to_give)
+        if self.get_game().get_selected_piece()==-1:
+            return random.randint(0,15)
+        print("G chooses piece - ", self.piece_to_give)
         return self.piece_to_give
 
     def place_piece(self):
         (self.piece_to_give, self.pos_chosen) = self.geneticAlgorithm.my_move()
-        #print("G chooses pos - ", self.pos_chosen)
+        print("G chooses pos - ", self.pos_chosen)
         return self.pos_chosen
 
 

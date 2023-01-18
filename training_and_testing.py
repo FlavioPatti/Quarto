@@ -9,6 +9,7 @@ from montecarlo.montecarlo import MonteCarloPlayer
 from main import RandomPlayer
 from main import RiskyPlayer
 from main import GeneticPlayer
+from minimax.minimax import MinimaxPlayer
 
 
 def train(game, player0, player1, num_matches,cycles):
@@ -20,7 +21,7 @@ def train(game, player0, player1, num_matches,cycles):
     for i in range(num_matches):
         
         game.reset()
-        #print("-------- PARTITA ", i)
+        print("-------- PARTITA ", i+1)
         if i%2==0:
             game.set_players((player0, player1))
             winner = game.run()
@@ -104,32 +105,32 @@ def eval(game, player0, player1, num_matches):
     win_rate= win / (win+loss)
     return win_rate
 
-def train_by_level(player1, level):
+def train_by_level(player1, levels):
     agents_lrs={
         "random": 0.01,
-        "risky": 0.2,
-        "EA": 0.22,
+        "risky": 0.1,
+        "EA": 0.12,
         "montecarlo-50":0.3,
         "montecarlo-100":0.35,
         "montecarlo-200":0.4,
         "montecarlo-500":0.475,
         "montecarlo-1000":0.525,
-        "montecarlo-2500":0.6
+        "montecarlo-2500":0.6,
+        "minimax-4":0.9
     }
-    if level==1:
-        print("LEVEL 1")
-        print("First training: Random Player")
-        player1.learning_rate=agents_lrs["random"]
-        game=player1.get_game()
-        player0=RandomPlayer(game)
-        num_matches = 1000
-        cycles=50
-        for i in range(cycles):
-            win_rate=train(game, player0,player1, num_matches, cycles) #player0 for testing, player1 for training
-            print("cycle train ", i+1," win rate: ",win_rate)
-        player1.save()
-        
-        print("Second training. Risky Player")
+    one=False
+    two=False
+    three=False
+    for level in levels:
+        if level==1:
+            one=True
+        if level==2:
+            two=True
+        if level==3:
+            three=True
+    if one:
+
+        print("LEVEL1: training vs Risky Player")
         player1.learning_rate=agents_lrs["risky"]
         player1.epsilon=1
         game=player1.get_game()
@@ -139,89 +140,89 @@ def train_by_level(player1, level):
         for i in range(cycles):
             win_rate=train(game, player0,player1, num_matches,cycles) #player0 for testing, player1 for training
             print("cycle train ", i+1," win rate: ",win_rate)
-        player1.save()
-        """
+        player1.save()   
         
-        print("Third training: vs montecarlo")
-        player1.learning_rate=agents_lrs["montecarlo-500"]
+    if two:
+        print("LEVEL2: training vs minimax-4")
+        player1.learning_rate=agents_lrs["minimax-4"]
         player1.epsilon=1
         game=player1.get_game()
-        player0=MonteCarloPlayer(game)
+        player0=MinimaxPlayer(game,"minimax/minmax_cache.pkl")
+        assert player0.MINMAX_DEPTH==4
         num_matches = 100
         cycles=20
         for i in range(cycles):
             win_rate=train(game, player0,player1, num_matches,cycles) #player0 for testing, player1 for training
             print("cycle train ", i+1," win rate: ",win_rate)
         player1.save()
-        """
-        
-        
-    else:
-        if level==2:
-            print("LEVEL 2")   
-            print("Second training: Risky Player")
-            player1.learning_rate=agents_lrs["risky"]
-            player1.epsilon=1
-            game=player1.get_game()
-            player0=RiskyPlayer(game)
-            num_matches = 100
-            cycles=10
-            for i in range(cycles):
-                win_rate=train(game, player0,player1, num_matches,cycles) #player0 for testing, player1 for training
-                print("cycle train ", i+1," win rate: ",win_rate)
-            player1.save()
-            print("Third training: vs montecarlo")
-            player1.learning_rate=agents_lrs["montecarlo-500"]
-            player1.epsilon=1
-            game=player1.get_game()
-            player0=MonteCarloPlayer(game)
-            num_matches = 10
-            cycles=10
-            for i in range(cycles):
-                win_rate=train(game, player0,player1, num_matches,cycles) #player0 for testing, player1 for training
-                print("cycle train ", i+1," win rate: ",win_rate)
-            player1.save()
-        else:
-            #da modificare
-            if level==3:
-                print("LEVEL 3")    
-                print("Third training: vs montecarlo")
-                player1.learning_rate=agents_lrs["montecarlo-100"]
-                player1.epsilon=1
-                game=player1.get_game()
-                player0=MonteCarloPlayer(game)
-                num_matches = 100
-                cycles=50
-                for i in range(cycles):
-                    win_rate=train(game, player0,player1, num_matches,cycles) #player0 for testing, player1 for training
-                    print("cycle train ", i+1," win rate: ",win_rate)
-                player1.save()
-                """
-                print("Fourth training: vs itself")
-                player1.learning_rate=player1.learning_rate+0.05 if win_rate>=0.5 else 0.1
-                player1.epsilon=1
-                game=player1.get_game()
-                player0=RL_Agent(game,False,True)
-                num_matches = 1000
-                cycles=10
-                for i in range(cycles):
-                    win_rate=train(game, player0,player1, num_matches,cycles) #player0 for testing, player1 for training
-                    print("cycle train ", i+1," win rate: ",win_rate)
-                player1.save()
-                """
+
+    if three:
+        print("LEVEL3: training vs itself")
+        player1.learning_rate=player1.learning_rate+0.05 #if win_rate>=0.5 else 0.1
+        player1.epsilon=1
+        game=player1.get_game()
+        player0=RL_Agent(game,False,True)
+        num_matches = 1000
+        cycles=10
+        for i in range(cycles):
+            win_rate=train(game, player0,player1, num_matches,cycles) #player0 for testing, player1 for training
+            print("cycle train ", i+1," win rate: ",win_rate)
+        player1.save()
         
 
 
 if __name__ == '__main__':
     game = quarto.Quarto()
     training_agent=RL_Agent(game)
-    level=3
+    assert training_agent.discount_factor==0.5
+    levels=[2]
+    train_by_level(training_agent,levels)
 
-    train_by_level(training_agent,level)
+    print("Evaluation vs Random")
+    game = quarto.Quarto()
+    player0=RandomPlayer(game)
+    player1=RL_Agent(game,False,True)
+    num_matches = 100
+    cycles=20
+    for i in range(cycles):
+        win_rate=eval(game, player0,player1, num_matches) #player0 for testing, player1 for training
+        print("cycle eval ", i+1," win rate: ",win_rate)
+
+    print("Evaluation vs Risky")
+    game = quarto.Quarto()
+    player0=RiskyPlayer(game)
+    player1=RL_Agent(game,False,True)
+    num_matches = 100
+    cycles=20
+    for i in range(cycles):
+        win_rate=eval(game, player0,player1, num_matches) #player0 for testing, player1 for training
+        print("cycle eval ", i+1," win rate: ",win_rate)
+    """
+    print("Evaluation vs GA")
+    game = quarto.Quarto()
+    player0=GeneticPlayer(game)
+    player1=RL_Agent(game,False,True)
+    num_matches = 100
+    cycles=20
+    for i in range(cycles):
+        win_rate=eval(game, player0,player1, num_matches) #player0 for testing, player1 for training
+        print("cycle eval ", i+1," win rate: ",win_rate)
+    """
+    print("Evaluation vs minimax-4")
+    game = quarto.Quarto()
+    player0=MinimaxPlayer(game,"minimax/minmax_cache.pkl")
+    assert player0.MINMAX_DEPTH==4
+    player1=RL_Agent(game,False,True)
+    num_matches = 100
+    cycles=20
+    for i in range(cycles):
+        win_rate=eval(game, player0,player1, num_matches) #player0 for testing, player1 for training
+        print("cycle eval ", i+1," win rate: ",win_rate)
     
-    print("Evaluation")
+    print("Evaluation vs Montecarlo50")
     game = quarto.Quarto()
     player0=MonteCarloPlayer(game)
+    assert player0.num_iteration==50
     player1=RL_Agent(game,False,True)
     num_matches = 100
     cycles=20

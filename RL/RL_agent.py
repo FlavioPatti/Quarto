@@ -8,7 +8,7 @@ class RL_Agent(quarto.Player):
     action_space = 256
     WIN_REWARD, LOSS_REWARD =   100, -100 #1, -1
 
-    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9995, min_epsilon=0.01, learning_rate = 1, discount_factor=0.15): #0.15):
+    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9995, min_epsilon=0.01, learning_rate = 1, discount_factor=0.5): #0.15):
         super().__init__(quarto)
         self.train_mode=train_mode
         self.pretrained=pretrained

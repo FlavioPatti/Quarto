@@ -13,7 +13,7 @@ class MonteCarloPlayer(quarto.Player):
         super().__init__(quarto) 
         self.root = node
         self.available_seconds = None
-        self.num_iteration = 100
+        self.num_iteration = 50
         self.verbose = 0
         if self.verbose:
             logging.getLogger().setLevel(level=logging.INFO)
