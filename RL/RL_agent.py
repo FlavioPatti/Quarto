@@ -6,9 +6,9 @@ import pickle
 
 class RL_Agent(quarto.Player):
     action_space = 256
-    WIN_REWARD, LOSS_REWARD =   100, -100 #1, -1
+    WIN_REWARD, LOSS_REWARD =   1000, -0.1 #1, -1
 
-    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9995, min_epsilon=0.01, learning_rate = 1, discount_factor=0.5): #0.15):
+    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9995, min_epsilon=0.01, learning_rate = 1, discount_factor=0.25): #0.15):
         super().__init__(quarto)
         self.train_mode=train_mode
         self.pretrained=pretrained
@@ -39,7 +39,11 @@ class RL_Agent(quarto.Player):
 
     def choose_piece(self):
         if self.get_game().get_selected_piece()==-1:
-            return random.randint(0,15)
+            state=[-1]*17
+            current_action=self.policy(state)
+            if self.train_mode:
+                self.state_history.append((state, current_action))
+            return current_action
         if self.train_mode:
             return self.state_history[-1][1] % 16
         else:
@@ -80,6 +84,8 @@ class RL_Agent(quarto.Player):
         '''returns a list of possible actions for a given state'''
         #if self.is_terminal():
         #    return [None]
+        if state.count(-1)==17:
+            return [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
         all_pieces={ x for x in range(len(state)-1)}
         available_pieces=list(all_pieces - set(state))
         # per evitare bug quando si sta per fare l'ultima mossa che porterà a un draw!
@@ -100,8 +106,26 @@ class RL_Agent(quarto.Player):
     def policy(self, state):
         '''Policy
         This function takes a state and chooses the action for that state that will lead to the maximum reward'''
+        if self.train_mode==True and self.get_game().get_selected_piece()!=-1:
+            game=quarto.Quarto()
+            game._board=self.get_game().get_board_status()
+            game._Quarto__selected_piece_index=self.get_game().get_selected_piece()
+            game._current_player=self.get_game().get_current_player()
+            game._Quarto__binary_board=copy.deepcopy(self.get_game()._Quarto__binary_board)
+            available_positions=[]
+            #print("available pieces: ", available_pieces)
+            for i, o in enumerate(state):
+                if o==-1:
+                    available_positions.append(i)
+            for pos in available_positions:
+                y=pos//4
+                x=pos%4
+                game.place(x, y)
+                if game.check_winner()==game.get_current_player:
+                    return pos*16
+                game._board[y, x] = -1
+                game._Quarto__binary_board[y,x][:] = np.nan
         possActions = self.getActions(state)
-
         if np.random.random() < self.epsilon and self.train_mode==True:
             # Random -> High exploration rate
             self.make_and_get_action_values(state, possActions)
@@ -130,8 +154,9 @@ class RL_Agent(quarto.Player):
             target=0
         for prev_state, prev_action in reversed(self.state_history):
             reward=self.q[tuple(prev_state)][prev_action]
-            self.q[tuple(prev_state)][prev_action]+= self.learning_rate * (self.discount_factor*target - self.q[tuple(prev_state)][prev_action])
+            self.q[tuple(prev_state)][prev_action]+= self.learning_rate * (target - self.q[tuple(prev_state)][prev_action])
             target +=reward
+            target*=self.discount_factor
         self.epsilon=max(self.epsilon*self.epsilon_decay,self.min_epsilon)
         self.state_history = []
         

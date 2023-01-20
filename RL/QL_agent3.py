@@ -6,9 +6,9 @@ import pickle
 
 class QL_Agent3(quarto.Player):
     action_space = 256
-    WIN_REWARD, LOSS_REWARD =   100, -100 #1, -1
+    WIN_REWARD, LOSS_REWARD =   100, -5 #1, -1
 
-    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9998, min_epsilon=0.01, learning_rate = 1, discount_factor = 0.5):
+    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9998, min_epsilon=0.01, learning_rate = 1, discount_factor = 0.25):
         super().__init__(quarto)
         self.train_mode=train_mode
         self.pretrained=pretrained
@@ -37,11 +37,9 @@ class QL_Agent3(quarto.Player):
 
     def choose_piece(self):
         if self.get_game().get_selected_piece()==-1:
-            self.previous_state = None
-            self.previous_action=None
-
-        if self.previous_action==None:
-            return random.randint(0,15)
+            state=[-1]*17
+            current_action=self.policy(state)
+            return current_action
         return self.previous_action % 16
 
     def place_piece(self):
@@ -79,6 +77,9 @@ class QL_Agent3(quarto.Player):
         '''returns a list of possible actions for a given state'''
         #if self.is_terminal():
         #    return [None]
+        if state.count(-1)==17:
+            return [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+
         all_pieces={ x for x in range(len(state)-1)}
         available_pieces=list(all_pieces - set(state))
         # per evitare bug quando si sta per fare l'ultima mossa che porterà a un draw!
@@ -99,16 +100,35 @@ class QL_Agent3(quarto.Player):
     def policy(self, state):
         '''Policy
         This function takes a state and chooses the action for that state that will lead to the maximum reward'''
+        if self.train_mode==True and self.get_game().get_selected_piece()!=-1:
+            game=quarto.Quarto()
+            game._board=self.get_game().get_board_status()
+            game._Quarto__selected_piece_index=self.get_game().get_selected_piece()
+            game._current_player=self.get_game().get_current_player()
+            game._Quarto__binary_board=copy.deepcopy(self.get_game()._Quarto__binary_board)
+            available_positions=[]
+            #print("available pieces: ", available_pieces)
+            for i, o in enumerate(state):
+                if o==-1:
+                    available_positions.append(i)
+            for pos in available_positions:
+                y=pos//4
+                x=pos%4
+                game.place(x, y)
+                if game.check_winner()==game.get_current_player:
+                    return pos*16
+                game._board[y, x] = -1
+                game._Quarto__binary_board[y,x][:] = np.nan
+                
         possActions = self.getActions(state)
-
         if np.random.random() < self.epsilon and self.train_mode==True:
             # Random -> High exploration rate
             chosen_action_idx = np.random.randint(0, len(possActions))
             return possActions[chosen_action_idx]  
-        else:
-            # Highest reward -> Low exploration rate
-            action_values = self.make_and_get_action_values(state, possActions)
-            return possActions[np.argmax(action_values)]
+
+        # Highest reward -> Low exploration rate
+        action_values = self.make_and_get_action_values(state, possActions)
+        return possActions[np.argmax(action_values)]
     """
     # Updates the Q-table as specified by the standard Q-learning algorithm
     def update_q(self, state, winner=None):

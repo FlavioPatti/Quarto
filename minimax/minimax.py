@@ -123,7 +123,12 @@ class MinimaxPlayer(quarto.Player):
     def choose_move_minimax(self, move_type):
         # for each possible move: compute minimax score
         # play the maximum scoring move
-        game = copy.deepcopy(self.current_game)
+        game=quarto.Quarto()
+        game._board=self.current_game.get_board_status()
+        game._Quarto__selected_piece_index=self.current_game.get_selected_piece()
+        game._current_player=self.current_game.get_current_player()
+        game._Quarto__binary_board=copy.deepcopy(self.current_game._Quarto__binary_board)
+        
         if move_type == self.SELF_CHOOSE:
             # explore all possible choosing moves
             valid_choices = self.get_valid_choices(game)
