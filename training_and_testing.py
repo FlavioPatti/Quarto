@@ -16,7 +16,7 @@ def train(game, player0, player1, num_matches,cycles):
     win = 0
     draw = 0
     loss = 0
-    player1.epsilon_decay=1-(1/(num_matches*cycles*0.25))
+    player1.epsilon_decay=1-(1/(num_matches*cycles*0.5)) #0.25
     print("beginning epsilon= ", player1.epsilon)
     for i in range(num_matches):
         
@@ -107,16 +107,17 @@ def eval(game, player0, player1, num_matches):
 
 def train_by_level(player1, levels):
     agents_lrs={
-        "random": 0.01,
-        "risky": 0.1,
-        "EA": 0.12,
-        "montecarlo-50":0.3,
-        "montecarlo-100":0.35,
-        "montecarlo-200":0.4,
-        "montecarlo-500":0.475,
-        "montecarlo-1000":0.525,
-        "montecarlo-2500":0.6,
-        "minimax-4":0.9
+        "minimax-0": 0,
+        #"random": 0.01,
+        #"risky": 0.1,
+        #"EA": 0.12,
+        #"montecarlo-50":0.3,
+        #"montecarlo-100":0.35,
+        #"montecarlo-200":0.4,
+        #"montecarlo-500":0.475,
+        #"montecarlo-1000":0.525,
+        #"montecarlo-2500":0.6,
+        "minimax-4":1
     }
     one=False
     two=False
@@ -147,14 +148,15 @@ def train_by_level(player1, levels):
         player1.learning_rate=agents_lrs["minimax-4"]
         player1.epsilon=1
         game=player1.get_game()
-        player0=MinimaxPlayer(game,"minimax/minmax_cache.pkl")
+        player0=MinimaxPlayer(game)
+        #player0.MINMAX_DEPTH=0
         assert player0.MINMAX_DEPTH==4
-        num_matches = 100
+        num_matches = 1000
         cycles=50
         for i in range(cycles):
             win_rate=train(game, player0,player1, num_matches,cycles) #player0 for testing, player1 for training
             print("cycle train ", i+1," win rate: ",win_rate)
-        player1.save()
+            player1.save()
 
     if three:
         print("LEVEL3: training vs itself")
@@ -199,10 +201,11 @@ if __name__ == '__main__':
         win_rate=eval(game, player0,player1, num_matches) #player0 for testing, player1 for training
         print("cycle eval ", i+1," win rate: ",win_rate)
     
-    print("Evaluation vs minimax-4")
+    print("Evaluation vs minimax-0")
     game = quarto.Quarto()
-    player0=MinimaxPlayer(game,"minimax/minmax_cache.pkl")
-    assert player0.MINMAX_DEPTH==4
+    player0=MinimaxPlayer(game)
+    player0.MINMAX_DEPTH=0
+    #assert player0.MINMAX_DEPTH==4
     player1=RL_Agent(game,False,True)
     num_matches = 100
     cycles=20
@@ -224,12 +227,13 @@ if __name__ == '__main__':
     """
     game = quarto.Quarto()
     player1=RL_Agent(game,False,True)
-    state=[-1]*17
-    print(player1.q[tuple(state)])
 
     for key,value in player1.q.items():
         for reward in value:
             if reward>0:
                 print(key,"->",value)
                 break
+    state=[-1]*17
+    print(player1.q[tuple(state)])
     """
+    

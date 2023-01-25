@@ -6,9 +6,9 @@ import pickle
 
 class QL_Agent3(quarto.Player):
     action_space = 256
-    WIN_REWARD, LOSS_REWARD =   100, -5 #1, -1
+    WIN_REWARD, LOSS_REWARD, DRAW_REWARD =   100, -5, 1 #1, -1
 
-    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9998, min_epsilon=0.01, learning_rate = 1, discount_factor = 0.25):
+    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9998, min_epsilon=0.1, learning_rate = 1, discount_factor = 0.25):
         super().__init__(quarto)
         self.train_mode=train_mode
         self.pretrained=pretrained
@@ -119,7 +119,7 @@ class QL_Agent3(quarto.Player):
                     return pos*16
                 game._board[y, x] = -1
                 game._Quarto__binary_board[y,x][:] = np.nan
-                
+
         possActions = self.getActions(state)
         if np.random.random() < self.epsilon and self.train_mode==True:
             # Random -> High exploration rate
@@ -193,6 +193,7 @@ class QL_Agent3(quarto.Player):
             #print("final loss reward: ", self.q[(tuple(self.previous_state), self.previous_action)])
             current_action = self.previous_state = self.previous_action = None
         elif winner==-1 or winner==2: #draw
+            reward=self.DRAW_REWARD
             self.q[tuple(self.previous_state)][self.previous_action] += \
                     self.learning_rate * (reward  - self.q[tuple(self.previous_state)][self.previous_action])
             current_action = self.previous_state = self.previous_action = None

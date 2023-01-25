@@ -3,12 +3,15 @@ import quarto
 import random
 import copy
 import pickle
+import math
+import sys
 
 class RL_Agent(quarto.Player):
     action_space = 256
-    WIN_REWARD, LOSS_REWARD =   1000, -0.1 #1, -1
+    #WIN_REWARD, LOSS_REWARD =   100, -10 #1, -1
+    #DRAW_REWARD=1
 
-    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9995, min_epsilon=0.01, learning_rate = 1, discount_factor=0.25): #0.15):
+    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9995, min_epsilon=0.1, learning_rate = 1, discount_factor=0.25): #0.15):
         super().__init__(quarto)
         self.train_mode=train_mode
         self.pretrained=pretrained
@@ -72,9 +75,10 @@ class RL_Agent(quarto.Player):
 
     def make_and_get_action_values(self, state, possActions):
         state=tuple(state)
+        def_list=[]
         if self.train_mode==True:
-            return self.q.setdefault(state, np.zeros(self.action_space))[possActions]
-        return self.q.get(state, np.zeros(self.action_space))[possActions]
+            return self.q.setdefault(state, np.zeros((self.action_space,2)))[possActions]
+        return self.q.get(state, np.zeros((self.action_space,2)))[possActions]
 
     def is_terminal(self):
         '''returns True if the state is terminal'''
@@ -106,36 +110,95 @@ class RL_Agent(quarto.Player):
     def policy(self, state):
         '''Policy
         This function takes a state and chooses the action for that state that will lead to the maximum reward'''
-        if self.train_mode==True and self.get_game().get_selected_piece()!=-1:
-            game=quarto.Quarto()
-            game._board=self.get_game().get_board_status()
-            game._Quarto__selected_piece_index=self.get_game().get_selected_piece()
-            game._current_player=self.get_game().get_current_player()
-            game._Quarto__binary_board=copy.deepcopy(self.get_game()._Quarto__binary_board)
-            available_positions=[]
-            #print("available pieces: ", available_pieces)
-            for i, o in enumerate(state):
-                if o==-1:
-                    available_positions.append(i)
-            for pos in available_positions:
-                y=pos//4
-                x=pos%4
-                game.place(x, y)
-                if game.check_winner()==game.get_current_player:
-                    return pos*16
-                game._board[y, x] = -1
-                game._Quarto__binary_board[y,x][:] = np.nan
         possActions = self.getActions(state)
+        #if self.train_mode==True: 
+        if self.train_mode==True:
+            if self.get_game().get_selected_piece()!=-1:
+                game=quarto.Quarto()
+                game._board=self.get_game().get_board_status()
+                game._Quarto__selected_piece_index=self.get_game().get_selected_piece()
+                game._current_player=self.get_game().get_current_player()
+                game._Quarto__binary_board=copy.deepcopy(self.get_game()._Quarto__binary_board)
+                available_positions=[]
+                #print("available pieces: ", available_pieces)
+                for i, o in enumerate(state):
+                    if o==-1:
+                        available_positions.append(i)
+                for pos in available_positions:
+                    y=pos//4
+                    x=pos%4
+                    game.place(x, y)
+                    if game.check_winner()==game.get_current_player:
+                        return pos*16
+                    game._board[y, x] = -1
+                    game._Quarto__binary_board[y,x][:] = np.nan
+        
+        
+            action_values = self.make_and_get_action_values(state, possActions)
+            for i,o in enumerate(action_values):
+                if o[1]==0:
+                    return possActions[i]
+            ind=random.randint(0,len(possActions)-1)
+            return possActions[ind]
+        else:
+            # Highest reward -> Low exploration rate
+            action_values = self.make_and_get_action_values(state, possActions)
+            ind=-1
+            max_reward=sys.float_info.min
+            for i,o in enumerate(action_values):
+                if o[0]==0 or o[1]==0:
+                    continue
+                rew=o[0]/o[1]
+                if rew>max_reward:
+                    max_reward=rew
+                    ind=i
+            if ind==-1:
+                ind=random.randint(0,len(possActions)-1)
+                return possActions[ind]
+            else:
+                return possActions[ind]
+            #return possActions[np.argmax(action_values)]
+
+        """    
         if np.random.random() < self.epsilon and self.train_mode==True:
             # Random -> High exploration rate
             self.make_and_get_action_values(state, possActions)
             chosen_action_idx = np.random.randint(0, len(possActions))
             return possActions[chosen_action_idx]  
         else:
-            # Highest reward -> Low exploration rate
+        
+        # Highest reward -> Low exploration rate
             action_values = self.make_and_get_action_values(state, possActions)
             return possActions[np.argmax(action_values)]
-   
+        """
+        #else:
+        """
+            smaller_adv_rew=math.inf
+            best_action=None
+            action_values=self.q.get(tuple(state), np.zeros(self.action_space))[possActions]
+            if np.max(action_values)==self.WIN_REWARD:
+                possActions[np.argmax(action_values)]
+
+            for action in possActions:
+                pos=action//16
+                piece=action%16
+                state[pos]=state[16]
+                state[16]=piece 
+                adv_actions=self.q.get(tuple(state), np.array([]))
+                if len(adv_actions)==0:
+                    continue
+                if np.count_nonzero(adv_actions==100)>0:
+                    continue
+                adv_rew=sum(adv_actions)
+                if adv_rew<smaller_adv_rew:
+                    best_action=action
+                    smaller_adv_rew=adv_rew
+                state[pos]=-1
+                state[16]=self.get_game().get_selected_piece()
+            if smaller_adv_rew==math.inf:
+                return possActions[0]
+            return best_action
+        """
     # Updates the Q-table as specified by the standard Q-learning algorithm
     def update_state_history(self, state):
     
@@ -145,18 +208,31 @@ class RL_Agent(quarto.Player):
         return current_action
 
     def learn(self, winner):
+        prev_state, prev_action =self.state_history[-1]
+        if self.q[tuple(prev_state)][prev_action][1]==0:
+            """
+            if winner==1:
+                target=self.WIN_REWARD
+            elif winner==0:
+                target=self.LOSS_REWARD  
+            else:
+                target=self.DRAW_REWARD
+            """
+            for prev_state, prev_action in reversed(self.state_history):
+                #reward=self.q[tuple(prev_state)][prev_action]
+                #self.q[tuple(prev_state)][prev_action]+= self.learning_rate * (target - self.q[tuple(prev_state)][prev_action])
+                #target +=reward
+                #target*=self.discount_factor
+                if winner==1:
+                    self.q[tuple(prev_state)][prev_action][0]+=1 
+                    self.q[tuple(prev_state)][prev_action][1]+=1 
+                elif winner==0:
+                    self.q[tuple(prev_state)][prev_action][1]+=1
+                else:
+                    self.q[tuple(prev_state)][prev_action][0]+=0.01 
+                    self.q[tuple(prev_state)][prev_action][1]+=1
+                    
 
-        if winner==1:
-            target=self.WIN_REWARD
-        elif winner==0:
-            target=self.LOSS_REWARD  
-        else:
-            target=0
-        for prev_state, prev_action in reversed(self.state_history):
-            reward=self.q[tuple(prev_state)][prev_action]
-            self.q[tuple(prev_state)][prev_action]+= self.learning_rate * (target - self.q[tuple(prev_state)][prev_action])
-            target +=reward
-            target*=self.discount_factor
         self.epsilon=max(self.epsilon*self.epsilon_decay,self.min_epsilon)
         self.state_history = []
         
