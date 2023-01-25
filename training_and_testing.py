@@ -17,7 +17,7 @@ def train(game, player0, player1, num_matches,cycles):
     draw = 0
     loss = 0
     player1.epsilon_decay=1-(1/(num_matches*cycles*0.5)) #0.25
-    print("beginning epsilon= ", player1.epsilon)
+    #print("beginning epsilon= ", player1.epsilon)
     for i in range(num_matches):
         
         game.reset()
@@ -57,7 +57,7 @@ def train(game, player0, player1, num_matches,cycles):
     #        counter_r+=1
     #print("count of cool rewards: ", counter_r)       
     #win_rate = win / num_matches
-    win_rate= win / (win+loss)
+    win_rate= win / (win+loss+draw)
     return win_rate
 
 def eval(game, player0, player1, num_matches):
@@ -102,14 +102,14 @@ def eval(game, player0, player1, num_matches):
     #        counter_r+=1
     #print("count of cool rewards: ", counter_r)       
     #win_rate = win / num_matches
-    win_rate= win / (win+loss)
+    win_rate= win / (win+loss+draw)
     return win_rate
 
 def train_by_level(player1, levels):
     agents_lrs={
         "minimax-0": 0,
-        #"random": 0.01,
-        #"risky": 0.1,
+        "random": 0.01,
+        "risky": 0.1,
         #"EA": 0.12,
         #"montecarlo-50":0.3,
         #"montecarlo-100":0.35,
@@ -151,8 +151,8 @@ def train_by_level(player1, levels):
         player0=MinimaxPlayer(game)
         #player0.MINMAX_DEPTH=0
         assert player0.MINMAX_DEPTH==4
-        num_matches = 1000
-        cycles=50
+        num_matches = 1
+        cycles=10
         for i in range(cycles):
             win_rate=train(game, player0,player1, num_matches,cycles) #player0 for testing, player1 for training
             print("cycle train ", i+1," win rate: ",win_rate)
@@ -178,8 +178,16 @@ if __name__ == '__main__':
     game = quarto.Quarto()
     training_agent=RL_Agent(game)
     assert training_agent.discount_factor==0.25
-    levels=[2]
+    levels=[1]
     train_by_level(training_agent,levels)
+    #print(training_agent.q)
+    #for key,value in training_agent.q.items():
+    #    for reward in value:
+    #        if reward[0]>0:
+    #            #print(key,"-> reward0-> ",value)
+    #            break
+    #state=[-1]*17
+    #print(training_agent.q[tuple(state)])
     
     print("Evaluation vs Random")
     game = quarto.Quarto()

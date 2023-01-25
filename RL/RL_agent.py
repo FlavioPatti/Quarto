@@ -113,6 +113,7 @@ class RL_Agent(quarto.Player):
         possActions = self.getActions(state)
         #if self.train_mode==True: 
         if self.train_mode==True:
+            action_values = self.make_and_get_action_values(state, possActions)
             if self.get_game().get_selected_piece()!=-1:
                 game=quarto.Quarto()
                 game._board=self.get_game().get_board_status()
@@ -128,13 +129,12 @@ class RL_Agent(quarto.Player):
                     y=pos//4
                     x=pos%4
                     game.place(x, y)
-                    if game.check_winner()==game.get_current_player:
+                    if game.check_winner()==game.get_current_player():
                         return pos*16
                     game._board[y, x] = -1
                     game._Quarto__binary_board[y,x][:] = np.nan
         
         
-            action_values = self.make_and_get_action_values(state, possActions)
             for i,o in enumerate(action_values):
                 if o[1]==0:
                     return possActions[i]
