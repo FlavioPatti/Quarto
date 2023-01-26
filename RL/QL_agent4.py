@@ -4,11 +4,11 @@ import random
 import copy
 import pickle
 
-class QL_Agent3(quarto.Player):
+class QL_Agent4(quarto.Player):
     action_space = 256
-    WIN_REWARD, LOSS_REWARD, DRAW_REWARD =   100, -1, 1 #1, -1
+    WIN_REWARD, LOSS_REWARD, DRAW_REWARD =   10, -1, 1 #1, -1
 
-    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9998, min_epsilon=0.1, learning_rate = 1, discount_factor = 0.25):
+    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9998, min_epsilon=0.1, learning_rate = 0.25, discount_factor = 0.25):
         super().__init__(quarto)
         self.train_mode=train_mode
         self.pretrained=pretrained
@@ -23,8 +23,10 @@ class QL_Agent3(quarto.Player):
         #epsilon serves as the exploration rate and determines the probability 
         #that the agent, in the learning process, will randomly select an action
         self.q = {}
-        self.previous_state = None
-        self.previous_action= None
+        if self.train_mode:
+            self.state_history = []
+        else:
+            self.action=None
         self.epsilon = epsilon   # epsilon   -> the higher epsilon,  the more random I act
         self.epsilon_decay=epsilon_decay
         self.min_epsilon=min_epsilon                      
@@ -39,8 +41,13 @@ class QL_Agent3(quarto.Player):
         if self.get_game().get_selected_piece()==-1:
             state=[-1]*17
             current_action=self.policy(state)
+            if self.train_mode:
+                self.state_history.append((state, current_action))
             return current_action
-        return self.previous_action % 16
+        if self.train_mode:
+            return self.state_history[-1][1] % 16
+        else:
+            return self.action %16
 
     def place_piece(self):
         #the state consists in a list of 17 elements (the 16 values of the board + the piece chosen by the opponent)
@@ -52,10 +59,10 @@ class QL_Agent3(quarto.Player):
         state.append(self.get_game().get_selected_piece())
         #print(state)
         if self.train_mode:
-            current_action=self.update_q(state)
+            current_action=self.update_state_history(state)
         else:
             current_action=self.policy(state)
-            self.previous_state, self.previous_action = state, current_action
+            self.action= current_action
 
         pos=current_action//16
         y=pos//4
@@ -82,7 +89,7 @@ class QL_Agent3(quarto.Player):
 
         all_pieces={ x for x in range(len(state)-1)}
         available_pieces=list(all_pieces - set(state))
-        # per evitare bug quando si sta per fare l'ultima mossa!(con solo uno spazio ancora vuoto)
+        # per evitare bug quando si sta per fare l'ultima mossa che porterà a un draw!
         if available_pieces==[]:
             available_pieces.append(0)
         available_positions=[]
@@ -102,7 +109,6 @@ class QL_Agent3(quarto.Player):
         This function takes a state and chooses the action for that state that will lead to the maximum reward'''
         possActions = self.getActions(state)
         action_values = self.make_and_get_action_values(state, possActions)
-        
         if self.train_mode==True and self.get_game().get_selected_piece()!=-1:
             game=quarto.Quarto()
             game._board=self.get_game().get_board_status()
@@ -179,52 +185,44 @@ class QL_Agent3(quarto.Player):
         
     """
     # Updates the Q-table as specified by the standard Q-learning algorithm
-    def update_q(self, state, winner=None):
-        reward=0
+    def update_q(self, winner=None):
         #print("winner is: ", winner)
+        state, action =self.state_history.pop()
+        if self.q[tuple(state)][action]==0:
+            if winner==1:
+                reward=self.WIN_REWARD
         
-        if winner==1:
-            reward=self.WIN_REWARD
-            self.q[tuple(self.previous_state)][self.previous_action] += \
-                    self.learning_rate * (reward  - self.q[tuple(self.previous_state)][self.previous_action])
-            current_action = self.previous_state = self.previous_action = None
-        elif winner==0:
-            reward=self.LOSS_REWARD
+            elif winner==0:
+                reward=self.LOSS_REWARD
+            else:
+                reward=self.DRAW_REWARD
+
+            self.q[tuple(state)][action] += \
+                self.learning_rate * (reward - \
+                    self.q[tuple(state)][action])
             possibleActions=self.getActions(state)
             action_values = self.make_and_get_action_values(state, possibleActions)
             maxQ = max(action_values)
-            self.q[tuple(self.previous_state)][self.previous_action] += \
-                self.learning_rate * (reward + self.discount_factor * maxQ - \
-                    self.q[tuple(self.previous_state)][self.previous_action])
-            #print("final loss reward: ", self.q[(tuple(self.previous_state), self.previous_action)])
-            current_action = self.previous_state = self.previous_action = None
-        elif winner==-1 or winner==2: #draw
-            reward=self.DRAW_REWARD
-            self.q[tuple(self.previous_state)][self.previous_action] += \
-                    self.learning_rate * (reward  - self.q[tuple(self.previous_state)][self.previous_action])
-            current_action = self.previous_state = self.previous_action = None
-            
-        else:
-      
-            current_action = self.policy(state)
 
-            if self.previous_action is not None:
-
-                #self.number_rewards+=1
-                possibleActions=self.getActions(state)
-                action_values = self.make_and_get_action_values(state, possibleActions)
-                maxQ = max(action_values)
-                self.q.setdefault(tuple(self.previous_state), np.zeros(self.action_space))
-                self.q[tuple(self.previous_state)][self.previous_action] += \
+            for previous_state, previous_action in reversed(self.state_history):  
+                self.q[tuple(previous_state)][previous_action] += \
                     self.learning_rate * (reward + self.discount_factor * maxQ - \
-                        self.q[tuple(self.previous_state)][self.previous_action])
+                        self.q[tuple(previous_state)][previous_action])
+                reward=self.q[tuple(previous_state)][previous_action]
+                possibleActions=self.getActions(previous_state)
+                action_values = self.make_and_get_action_values(previous_state, possibleActions)
+                maxQ = max(action_values)
+            self.state_history = []
 
-            self.previous_state, self.previous_action = state, current_action
-        #print(reward)
+    def update_state_history(self, state):
+    
+        current_action = self.policy(state)
+        self.state_history.append((state, current_action))
+
         return current_action
 
     def learn(self,winner):
-        self.update_q(self.previous_state, winner)
+        self.update_q(winner)
         self.epsilon=max(self.epsilon*self.epsilon_decay,self.min_epsilon)
         
 
@@ -238,4 +236,3 @@ class QL_Agent3(quarto.Player):
     def load(self):
         with open('player.bin', 'rb') as f:
             self.q=pickle.load(f)
-                

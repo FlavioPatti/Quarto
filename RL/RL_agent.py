@@ -11,7 +11,7 @@ class RL_Agent(quarto.Player):
     #WIN_REWARD, LOSS_REWARD =   100, -10 #1, -1
     #DRAW_REWARD=1
 
-    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9995, min_epsilon=0.1, learning_rate = 1, discount_factor=0.25): #0.15):
+    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9995, min_epsilon=0.1, learning_rate = 0.25, discount_factor=0.25): #0.15):
         super().__init__(quarto)
         self.train_mode=train_mode
         self.pretrained=pretrained
@@ -130,7 +130,11 @@ class RL_Agent(quarto.Player):
                     x=pos%4
                     game.place(x, y)
                     if game.check_winner()==game.get_current_player():
-                        return pos*16
+                        all_pieces={ x for x in range(len(state)-1)}
+                        available_pieces=list(all_pieces - set(state))
+                        if available_pieces==[]:
+                            available_pieces.append(0)
+                        return pos*16+available_pieces[0]
                     game._board[y, x] = -1
                     game._Quarto__binary_board[y,x][:] = np.nan
         

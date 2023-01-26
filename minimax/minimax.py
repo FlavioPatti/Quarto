@@ -24,7 +24,7 @@ class MinimaxPlayer(quarto.Player):
     OPPONENT_CHOOSE = 2 
     OPPONENT_PLACE = 3
     # Minmax depth
-    MINMAX_DEPTH = 4
+    MINMAX_DEPTH = 8
 
     def __init__(self, quarto: quarto.Quarto, cache_file=None) -> None:
         super().__init__(quarto)
