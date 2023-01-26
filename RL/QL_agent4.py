@@ -6,7 +6,7 @@ import pickle
 
 class QL_Agent4(quarto.Player):
     action_space = 256
-    WIN_REWARD, LOSS_REWARD, DRAW_REWARD =   10, -1, 1 #1, -1
+    WIN_REWARD, LOSS_REWARD, DRAW_REWARD =   10, -10, 1 #1, -1
 
     def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9998, min_epsilon=0.1, learning_rate = 0.25, discount_factor = 0.25):
         super().__init__(quarto)
