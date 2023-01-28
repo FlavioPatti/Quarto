@@ -24,7 +24,7 @@ class MinimaxPlayer(quarto.Player):
     OPPONENT_CHOOSE = 2 
     OPPONENT_PLACE = 3
     # Minmax depth
-    MINMAX_DEPTH = 8
+    MINMAX_DEPTH = 4
 
     def __init__(self, quarto: quarto.Quarto, cache_file=None) -> None:
         super().__init__(quarto)
@@ -126,7 +126,11 @@ class MinimaxPlayer(quarto.Player):
     def choose_move_minimax(self, move_type):
         # for each possible move: compute minimax score
         # play the maximum scoring move
-        game = copy.deepcopy(self.current_game)
+        game=quarto.Quarto()
+        game._board=self.get_game().get_board_status()
+        game._Quarto__selected_piece_index=self.get_game().get_selected_piece()
+        game._current_player=self.get_game().get_current_player()
+        game._Quarto__binary_board=copy.deepcopy(self.get_game()._Quarto__binary_board)
         if move_type == self.SELF_CHOOSE:
             # explore all possible choosing moves
             valid_choices = self.get_valid_choices(game)
@@ -187,7 +191,11 @@ class MinimaxPlayer(quarto.Player):
     def choose_move_alphabeta(self, move_type):
         # for each possible move: compute minimax score
         # play the maximum scoring move
-        game = copy.deepcopy(self.current_game)
+        game=quarto.Quarto()
+        game._board=self.get_game().get_board_status()
+        game._Quarto__selected_piece_index=self.get_game().get_selected_piece()
+        game._current_player=self.get_game().get_current_player()
+        game._Quarto__binary_board=copy.deepcopy(self.get_game()._Quarto__binary_board)
         if move_type == self.SELF_CHOOSE:
             # explore all possible choosing moves
             valid_choices = self.get_valid_choices(game)

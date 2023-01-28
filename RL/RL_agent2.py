@@ -8,10 +8,10 @@ import sys
 
 class RL_Agent(quarto.Player):
     action_space = 256
-    WIN_REWARD, LOSS_REWARD =   100, -1 #1, -1
-    DRAW_REWARD=1
+    #WIN_REWARD, LOSS_REWARD =   100, -10 #1, -1
+    #DRAW_REWARD=1
 
-    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9995, min_epsilon=0.1, learning_rate = 1, discount_factor=0.25): #0.15):
+    def __init__(self, quarto:quarto.Quarto, train_mode=True, pretrained=False, epsilon = 1, epsilon_decay=0.9995, min_epsilon=0.1, learning_rate = 0.25, discount_factor=0.25): #0.15):
         super().__init__(quarto)
         self.train_mode=train_mode
         self.pretrained=pretrained
@@ -77,8 +77,8 @@ class RL_Agent(quarto.Player):
         state=tuple(state)
         def_list=[]
         if self.train_mode==True:
-            return self.q.setdefault(state, np.zeros(self.action_space))[possActions]
-        return self.q.get(state, np.zeros(self.action_space))[possActions]
+            return self.q.setdefault(state, np.zeros((self.action_space,2)))[possActions]
+        return self.q.get(state, np.zeros((self.action_space,2)))[possActions]
 
     def is_terminal(self):
         '''returns True if the state is terminal'''
@@ -111,10 +111,9 @@ class RL_Agent(quarto.Player):
         '''Policy
         This function takes a state and chooses the action for that state that will lead to the maximum reward'''
         possActions = self.getActions(state)
-        action_values = self.make_and_get_action_values(state, possActions)
         #if self.train_mode==True: 
         if self.train_mode==True:
-            
+            action_values = self.make_and_get_action_values(state, possActions)
             if self.get_game().get_selected_piece()!=-1:
                 game=quarto.Quarto()
                 game._board=self.get_game().get_board_status()
@@ -139,17 +138,43 @@ class RL_Agent(quarto.Player):
                     game._board[y, x] = -1
                     game._Quarto__binary_board[y,x][:] = np.nan
         
+        
+            for i,o in enumerate(action_values):
+                if o[1]==0:
+                    return possActions[i]
+            ind=random.randint(0,len(possActions)-1)
+            return possActions[ind]
+        else:
+            # Highest reward -> Low exploration rate
+            action_values = self.make_and_get_action_values(state, possActions)
+            ind=-1
+            max_reward=sys.float_info.min
+            for i,o in enumerate(action_values):
+                if o[0]==0 or o[1]==0:
+                    continue
+                rew=o[0]/o[1]
+                if rew>max_reward:
+                    max_reward=rew
+                    ind=i
+            if ind==-1:
+                ind=random.randint(0,len(possActions)-1)
+                return possActions[ind]
+            else:
+                return possActions[ind]
+            #return possActions[np.argmax(action_values)]
 
-            
+        """    
         if np.random.random() < self.epsilon and self.train_mode==True:
             # Random -> High exploration rate
+            self.make_and_get_action_values(state, possActions)
             chosen_action_idx = np.random.randint(0, len(possActions))
             return possActions[chosen_action_idx]  
         else:
         
         # Highest reward -> Low exploration rate
+            action_values = self.make_and_get_action_values(state, possActions)
             return possActions[np.argmax(action_values)]
-        
+        """
         #else:
         """
             smaller_adv_rew=math.inf
@@ -187,20 +212,31 @@ class RL_Agent(quarto.Player):
         return current_action
 
     def learn(self, winner):
-        
-        if winner==1:
-            target=self.WIN_REWARD
-        elif winner==0:
-            target=self.LOSS_REWARD  
-        else:
-            target=self.DRAW_REWARD
-        
-        for prev_state, prev_action in reversed(self.state_history):
-            reward=self.q[tuple(prev_state)][prev_action]
-            self.q[tuple(prev_state)][prev_action]+= self.learning_rate * (target - self.q[tuple(prev_state)][prev_action])
-            target +=reward
-            target*=self.discount_factor
+        prev_state, prev_action =self.state_history[-1]
+        if self.q[tuple(prev_state)][prev_action][1]==0:
+            """
+            if winner==1:
+                target=self.WIN_REWARD
+            elif winner==0:
+                target=self.LOSS_REWARD  
+            else:
+                target=self.DRAW_REWARD
+            """
+            for prev_state, prev_action in reversed(self.state_history):
+                #reward=self.q[tuple(prev_state)][prev_action]
+                #self.q[tuple(prev_state)][prev_action]+= self.learning_rate * (target - self.q[tuple(prev_state)][prev_action])
+                #target +=reward
+                #target*=self.discount_factor
+                if winner==1:
+                    self.q[tuple(prev_state)][prev_action][0]+=1 
+                    self.q[tuple(prev_state)][prev_action][1]+=1 
+                elif winner==0:
+                    self.q[tuple(prev_state)][prev_action][1]+=1
+                else:
+                    self.q[tuple(prev_state)][prev_action][0]+=0.01 
+                    self.q[tuple(prev_state)][prev_action][1]+=1
                     
+
         self.epsilon=max(self.epsilon*self.epsilon_decay,self.min_epsilon)
         self.state_history = []
         
