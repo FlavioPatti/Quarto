@@ -5,6 +5,7 @@ import quarto
 import copy
 from RL.QL_agent3 import QL_Agent3
 from RL.RL_agent import RL_Agent
+from RL.RL_agent2 import RL_Agent2
 from RL.QL_agent4 import QL_Agent4
 from montecarlo.montecarlo import MonteCarloPlayer
 from main import RandomPlayer
@@ -18,7 +19,7 @@ def train(game, player0, player1, num_matches,cycles):
     draw = 0
     loss = 0
     player1.epsilon_decay=1-(1/(num_matches*cycles*0.5)) #0.25
-    print("beginning epsilon= ", player1.epsilon)
+    #print("beginning epsilon= ", player1.epsilon)
     for i in range(num_matches):
         
         game.reset()

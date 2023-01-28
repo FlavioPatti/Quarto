@@ -6,7 +6,7 @@ import pickle
 import math
 import sys
 
-class RL_Agent(quarto.Player):
+class RL_Agent2(quarto.Player):
     action_space = 256
     #WIN_REWARD, LOSS_REWARD =   100, -10 #1, -1
     #DRAW_REWARD=1
