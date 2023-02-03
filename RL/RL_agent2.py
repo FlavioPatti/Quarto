@@ -88,19 +88,24 @@ class RL_Agent2(quarto.Player):
         '''returns a list of possible actions for a given state'''
         #if self.is_terminal():
         #    return [None]
-        if state.count(-1)==17:
-            return [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+        count=state.count(-1)
+        if count==17:
+            return [0]#,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]  #PROVA OTTIMIZZAZIONEEEEEEEEE
+        
         all_pieces={ x for x in range(len(state)-1)}
         available_pieces=list(all_pieces - set(state))
         # per evitare bug quando si sta per fare l'ultima mossa che porterà a un draw!
         if available_pieces==[]:
             available_pieces.append(0)
-        available_positions=[]
-        #print("available pieces: ", available_pieces)
-        for i, o in enumerate(state):
-            if o==-1:
-                available_positions.append(i)
-        #print("available positions: ", available_positions)
+        if count==16:
+            available_positions=[0,1]
+        else:
+            available_positions=[]
+            #print("available pieces: ", available_pieces)
+            for i, o in enumerate(state):
+                if o==-1:
+                    available_positions.append(i)
+            #print("available positions: ", available_positions)
         possible_actions = [
             16 * pos + piece for pos in available_positions for piece in available_pieces]
         #print("possible actions: ", possible_actions)
@@ -145,6 +150,48 @@ class RL_Agent2(quarto.Player):
             ind=random.randint(0,len(possActions)-1)
             return possActions[ind]
         else:
+            """
+            action_values = self.make_and_get_action_values(state, possActions)
+            if self.get_game().get_selected_piece()!=-1:
+                game=quarto.Quarto()
+                game._board=self.get_game().get_board_status()
+                game._Quarto__selected_piece_index=self.get_game().get_selected_piece()
+                game._current_player=self.get_game().get_current_player()
+                game._Quarto__binary_board=copy.deepcopy(self.get_game()._Quarto__binary_board)
+                available_positions=[]
+                #print("available pieces: ", available_pieces)
+                for i, o in enumerate(state):
+                    if o==-1:
+                        available_positions.append(i)
+                for pos in available_positions:
+                    y=pos//4
+                    x=pos%4
+                    game.place(x, y)
+                    if game.check_winner()==game.get_current_player():
+                        all_pieces={ x for x in range(len(state)-1)}
+                        available_pieces=list(all_pieces - set(state))
+                        if available_pieces==[]:
+                            available_pieces.append(0)
+                        return pos*16+available_pieces[0]
+                    game._board[y, x] = -1
+                    game._Quarto__binary_board[y,x][:] = np.nan
+            ind=-1
+            max_reward=sys.float_info.min
+            for i,o in enumerate(action_values):
+                if o[0]==0 or o[1]==0:
+                    continue
+                rew=o[0]/o[1]
+                if rew>max_reward:
+                    max_reward=rew
+                    ind=i
+            if ind==-1:
+                ind=random.randint(0,len(possActions)-1)
+                return possActions[ind]
+            else:
+                return possActions[ind]
+            #return possActions[np.argmax(action_values)]
+            """
+            
             # Highest reward -> Low exploration rate
             action_values = self.make_and_get_action_values(state, possActions)
             ind=-1
@@ -161,48 +208,9 @@ class RL_Agent2(quarto.Player):
                 return possActions[ind]
             else:
                 return possActions[ind]
-            #return possActions[np.argmax(action_values)]
-
-        """    
-        if np.random.random() < self.epsilon and self.train_mode==True:
-            # Random -> High exploration rate
-            self.make_and_get_action_values(state, possActions)
-            chosen_action_idx = np.random.randint(0, len(possActions))
-            return possActions[chosen_action_idx]  
-        else:
+            
         
-        # Highest reward -> Low exploration rate
-            action_values = self.make_and_get_action_values(state, possActions)
-            return possActions[np.argmax(action_values)]
-        """
-        #else:
-        """
-            smaller_adv_rew=math.inf
-            best_action=None
-            action_values=self.q.get(tuple(state), np.zeros(self.action_space))[possActions]
-            if np.max(action_values)==self.WIN_REWARD:
-                possActions[np.argmax(action_values)]
-
-            for action in possActions:
-                pos=action//16
-                piece=action%16
-                state[pos]=state[16]
-                state[16]=piece 
-                adv_actions=self.q.get(tuple(state), np.array([]))
-                if len(adv_actions)==0:
-                    continue
-                if np.count_nonzero(adv_actions==100)>0:
-                    continue
-                adv_rew=sum(adv_actions)
-                if adv_rew<smaller_adv_rew:
-                    best_action=action
-                    smaller_adv_rew=adv_rew
-                state[pos]=-1
-                state[16]=self.get_game().get_selected_piece()
-            if smaller_adv_rew==math.inf:
-                return possActions[0]
-            return best_action
-        """
+      
     # Updates the Q-table as specified by the standard Q-learning algorithm
     def update_state_history(self, state):
     

@@ -6,6 +6,7 @@ import math
 import copy
 import numpy as np
 import pickle
+import sys
 
 self_choose_cache = dict()  # state: score
 self_place_cache = dict()
@@ -17,7 +18,7 @@ opponent_place_cache = dict()
 # that doesn't lead to a win, keep it for later (unless all next choices are losing). 
 class MinimaxPlayer(quarto.Player):
     """Minimax player"""
-
+    action_space = 256
     # move type constants
     SELF_CHOOSE = 0
     SELF_PLACE = 1
@@ -26,13 +27,20 @@ class MinimaxPlayer(quarto.Player):
     # Minmax depth
     MINMAX_DEPTH = 4
 
-    def __init__(self, quarto: quarto.Quarto, cache_file=None) -> None:
+    def __init__(self, quarto: quarto.Quarto, cache_file=None, withRL=False) -> None:
         super().__init__(quarto)
+        self.withRL=withRL
         self.current_game = quarto
         self.current_game._board = quarto._board
         if cache_file is not None:
             # load cache
             load_cache(cache_file)
+        if self.withRL==True:
+            self.q = {}
+            self.place=None
+            
+            self.load_qtable()
+            
     
     def get_game(self):
         # override
@@ -122,7 +130,7 @@ class MinimaxPlayer(quarto.Player):
             return (x, y), 0
         return move, 1
     
-
+    """
     def choose_move_minimax(self, move_type):
         # for each possible move: compute minimax score
         # play the maximum scoring move
@@ -187,7 +195,7 @@ class MinimaxPlayer(quarto.Player):
             while not self.try_place(game, x, y):
                 x, y = random.randint(0, 3), random.randint(0, 3)
             return (x, y)
-
+    """
     def choose_move_alphabeta(self, move_type):
         # for each possible move: compute minimax score
         # play the maximum scoring move
@@ -212,9 +220,33 @@ class MinimaxPlayer(quarto.Player):
                     draw_choices.append(choice)
                 else:
                     losing_choices.append(choice)
-            # finally choose a move.
+            
             if len(winning_choices) > 0:
                 return random.choice(winning_choices)
+            if self.withRL==True:
+                # finally choose a move.
+                if self.get_game().get_selected_piece()==-1:
+                    possActions = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+                    state=[-1]*17
+                    choose=self.policy(state,possActions)
+                    return choose
+                
+                #create state
+                board=self.get_game().get_board_status()
+                state=[]
+                for yp in board:
+                    for xp in yp:
+                        state.append(xp)
+                state.append(self.get_game().get_selected_piece())
+                #possible pieces
+                all_pieces={ x for x in range(len(state)-1)}
+                available_pieces=all_pieces - set(state)
+                available_pieces=available_pieces- set(losing_choices)
+                if available_pieces!=set():
+                    available_pieces=list(available_pieces)
+                    possActions = [16 * self.place + piece  for piece in available_pieces]
+                    action=self.policy(state,possActions)
+                    return action %16
             if len(draw_choices) > 0:
                 return random.choice(draw_choices)
             if len(losing_choices) > 0:
@@ -243,7 +275,42 @@ class MinimaxPlayer(quarto.Player):
                     losing_moves.append((x, y))
             # finally choose a move.
             if len(winning_moves) > 0:
-                return random.choice(winning_moves)
+                place=random.choice(winning_moves)
+                if self.withRL==True:
+                    self.place=place
+                return place
+            if self.withRL==True:
+                #create state
+                board=self.get_game().get_board_status()
+                state=[]
+                for yp in board:
+                    for xp in yp:
+                        state.append(xp)
+                state.append(self.get_game().get_selected_piece())
+                #possible positions
+                available_positions=[]
+                for i, o in enumerate(state):
+                    if o==-1:
+                        available_positions.append(i)
+                losing_movess=[]
+                for x,y in losing_moves:
+                    poss=y*4+x
+                    losing_movess.append(poss)
+
+                available_positions=set(available_positions)-set(losing_movess)#--> da cambiareee
+                all_pieces={ x for x in range(len(state)-1)}
+                available_pieces=all_pieces - set(state)
+                if available_pieces!=set() and available_positions!=set():
+                    available_pieces=list(available_pieces)
+                    available_positions=list(available_positions)
+                    possActions = [16 * pos + piece  for pos in available_positions for piece in available_pieces]
+                    action=self.policy(state,possActions)
+                    pos=action//16
+                    self.place=pos
+                    y=pos//4
+                    x=pos%4
+                    return (x,y)
+
             if len(draw_moves) > 0:
                 return random.choice(draw_moves)
             if (len(losing_moves) > 0):
@@ -252,6 +319,30 @@ class MinimaxPlayer(quarto.Player):
             while not self.try_place(game, x, y):
                 x, y = random.randint(0, 3), random.randint(0, 3)
             return (x, y)
+
+    def policy(self, state,possActions):
+        '''Policy
+        This function takes a state and chooses the action for that state that will lead to the maximum reward'''
+        # Highest reward -> Low exploration rate
+        action_values = self.get_action_values(state, possActions)
+        ind=-1
+        max_reward=sys.float_info.min
+        for i,o in enumerate(action_values):
+            if o[0]==0 or o[1]==0:
+                continue
+            rew=o[0]/o[1]
+            if rew>max_reward:
+                max_reward=rew
+                ind=i
+        if ind==-1:
+            ind=random.randint(0,len(possActions)-1)
+            return possActions[ind]
+        else:
+            return possActions[ind]
+
+    def get_action_values(self, state, possActions):
+        state=tuple(state)
+        return self.q.get(state, np.zeros((self.action_space,2)))[possActions]
 
     def __evaluate_position(self, game, move_type) -> int:
         ''' Returns the score of the given position. '''
@@ -276,7 +367,7 @@ class MinimaxPlayer(quarto.Player):
             # opponent just chose! Can I win?
             _, score = self.make_placing_move(game)
             return score
-    
+    """
     def minimax(self, current_state, depth, move_type) -> int:
         # move_type: la mossa che è appena stata fatta
         score = self.__evaluate_position(current_state,move_type)
@@ -371,7 +462,7 @@ class MinimaxPlayer(quarto.Player):
             # save to cache
             self_place_cache[hash] = score
             return score
-
+    """
     def alphabeta(self, current_state, depth, alpha, beta, move_type) -> int:
         # move_type: la mossa che è appena stata fatta
         score = self.__evaluate_position(current_state,move_type)
@@ -497,6 +588,10 @@ class MinimaxPlayer(quarto.Player):
                     valid_moves.append((x, y))
         return valid_moves
     
+    def load_qtable(self):
+        with open('player.bin', 'rb') as f:
+            self.q=pickle.load(f)
+    
 def save_cache(filename):
     picklefile = open(filename, 'wb')
     data = [self_place_cache, self_choose_cache, opponent_place_cache, opponent_choose_cache]
@@ -517,4 +612,5 @@ def load_cache(filename):
     self_choose_cache = data[1]
     opponent_place_cache = data[2]
     opponent_choose_cache = data[3]
+
     

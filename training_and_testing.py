@@ -154,7 +154,7 @@ def train_by_level(player1, levels):
         player0.MINMAX_DEPTH=4
         assert player0.MINMAX_DEPTH==4
         num_matches = 1000
-        cycles=50
+        cycles=49
         for i in range(cycles):
             win_rate=train(game, player0,player1, num_matches,cycles) #player0 for testing, player1 for training
             print("cycle train ", i+1," win rate: ",win_rate*100,"%")
@@ -178,7 +178,7 @@ def train_by_level(player1, levels):
 if __name__ == '__main__':
     
     game = quarto.Quarto()
-    training_agent=RL_Agent(game)
+    training_agent=RL_Agent2(game,True,True)
     assert training_agent.discount_factor==0.25
     levels=[2]
     train_by_level(training_agent,levels)
@@ -188,13 +188,17 @@ if __name__ == '__main__':
     #        if reward[0]>0:
     #            #print(key,"-> reward0-> ",value)
     #            break
+    #for key,value in training_agent.q.items():
+    #    if key.count(-1)==16:
+    #        print(key,"-> reward0-> ",value)
+
     #state=[-1]*17
     #print(training_agent.q[tuple(state)])
-    
+    """
     print("Evaluation vs Random")
     game = quarto.Quarto()
     player0=RandomPlayer(game)
-    player1=RL_Agent(game,False,True)
+    player1=RL_Agent2(game,False,True)
     num_matches = 100
     cycles=20
     for i in range(cycles):
@@ -204,7 +208,7 @@ if __name__ == '__main__':
     print("Evaluation vs Risky")
     game = quarto.Quarto()
     player0=RiskyPlayer(game)
-    player1=RL_Agent(game,False,True)
+    player1=RL_Agent2(game,False,True)
     num_matches = 100
     cycles=20
     for i in range(cycles):
@@ -216,18 +220,21 @@ if __name__ == '__main__':
     player0=MinimaxPlayer(game)
     player0.MINMAX_DEPTH=4
     assert player0.MINMAX_DEPTH==4
-    player1=RL_Agent(game,False,True)
+    player1=RL_Agent2(game,False,True)
     num_matches = 100
     cycles=20
     for i in range(cycles):
         win_rate=eval(game, player0,player1, num_matches) #player0 for testing, player1 for training
         print("cycle eval ", i+1," win rate: ",win_rate*100,"%")
     """
-    print("Evaluation vs Montecarlo50")
+    """
+    print("Evaluation minimax-4 vs minimax-4-RL")
     game = quarto.Quarto()
-    player0=MonteCarloPlayer(game)
-    assert player0.num_iteration==50
-    player1=QL_Agent3(game,False,True)
+    player0=MinimaxPlayer(game)
+    player0.MINMAX_DEPTH=4
+    assert player0.MINMAX_DEPTH==4
+    player1=MinimaxPlayer(game,withRL=True)
+    assert player1.MINMAX_DEPTH==4
     num_matches = 100
     cycles=20
     for i in range(cycles):
