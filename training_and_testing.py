@@ -176,24 +176,25 @@ def train_by_level(player1, levels):
 
 
 if __name__ == '__main__':
-    
+    """
     game = quarto.Quarto()
     training_agent=RL_Agent2(game,True,True)
-    assert training_agent.discount_factor==0.25
+    #assert training_agent.discount_factor==0.25
     levels=[2]
-    train_by_level(training_agent,levels)
+    #train_by_level(training_agent,levels)
     #print(training_agent.q)
     #for key,value in training_agent.q.items():
     #    for reward in value:
     #        if reward[0]>0:
     #            #print(key,"-> reward0-> ",value)
     #            break
-    #for key,value in training_agent.q.items():
-    #    if key.count(-1)==16:
-    #        print(key,"-> reward0-> ",value)
+    for key,value in training_agent.q.items():
+        if key.count(-1)==16:
+            print(training_agent.q[tuple(key)])
 
-    #state=[-1]*17
-    #print(training_agent.q[tuple(state)])
+    state=[-1]*17
+    print(training_agent.q[tuple(state)])
+    """
     """
     print("Evaluation vs Random")
     game = quarto.Quarto()
@@ -227,7 +228,7 @@ if __name__ == '__main__':
         win_rate=eval(game, player0,player1, num_matches) #player0 for testing, player1 for training
         print("cycle eval ", i+1," win rate: ",win_rate*100,"%")
     """
-    """
+    
     print("Evaluation minimax-4 vs minimax-4-RL")
     game = quarto.Quarto()
     player0=MinimaxPlayer(game)
@@ -240,7 +241,7 @@ if __name__ == '__main__':
     for i in range(cycles):
         win_rate=eval(game, player0,player1, num_matches) #player0 for testing, player1 for training
         print("cycle eval ", i+1," win rate: ",win_rate*100,"%")
-    """
+    
     """
     game = quarto.Quarto()
     player1=RL_Agent(game,False,True)
