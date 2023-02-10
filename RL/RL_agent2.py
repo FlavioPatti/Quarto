@@ -241,7 +241,7 @@ class RL_Agent2(quarto.Player):
                 elif winner==0:
                     self.q[tuple(prev_state)][prev_action][1]+=1
                 else:
-                    self.q[tuple(prev_state)][prev_action][0]+=0.25
+                    self.q[tuple(prev_state)][prev_action][0]+=0.1
                     self.q[tuple(prev_state)][prev_action][1]+=1
                     
 

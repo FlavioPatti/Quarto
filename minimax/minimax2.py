@@ -169,7 +169,11 @@ class MinmaxPlayer2(quarto.Player):
                 #     break;
         
         #print(f'depth: {self.MINMAX_DEPTH}')
-        action,reward=self.minmax(game_copy)
+        if self.withRL==True:
+            losingMoves=[]
+            action,reward=self.minmax(game_copy,losingMoves=losingMoves)
+        else:
+            action,reward=self.minmax(game_copy)
         #RL
         if self.withRL==True:
             if reward==1 or reward==0.5:
@@ -188,8 +192,12 @@ class MinmaxPlayer2(quarto.Player):
             #print("available positions: ", available_positions)
             possActions = [
                 16 * pos + piece for pos in available_positions for piece in available_pieces]
-            #print("possible actions: ", possible_actions    
-            current_action=self.policy(state,possActions)
+            possActions=list(set(possActions)-set(losingMoves))
+            if possActions!=[]:
+                current_action=self.policy(state,possActions)
+            else:
+                return losingMoves[0]
+            #print("possible actions: ", possible_actions)    
             #print("current action: ",current_action)
             return current_action
         #print("action: ", action)
@@ -287,7 +295,7 @@ class MinmaxPlayer2(quarto.Player):
 
     #     return m
 
-    def minmax(self, game, deep = 0, maximizingPlayer = True, alpha = -math.inf , beta = math.inf): #0 - my tourn, 1 - opponent-tourn
+    def minmax(self, game, deep = 0, maximizingPlayer = True, alpha = -math.inf , beta = math.inf, losingMoves=[]): #0 - my tourn, 1 - opponent-tourn
     
         val = self.__evaluate_move(game, deep%2)
 
@@ -321,6 +329,9 @@ class MinmaxPlayer2(quarto.Player):
                 _ , val = self.minmax(tmp, deep+1, False, alpha, beta)
 
                 evaluations.append((ply, val))
+                if self.withRL==True:
+                    if deep==0 and val==-1:
+                        losingMoves.append(ply)
 
                 # if val == 0:
                 #     break
@@ -336,7 +347,6 @@ class MinmaxPlayer2(quarto.Player):
                 
             # if deep == 0:
             #     print()
-            
             m = max(evaluations, key=lambda k: k[1])
             return m
         

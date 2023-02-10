@@ -80,18 +80,28 @@ def eval(game, player0, player1, num_matches):
         if i%2==0:
             if winner == 1:
                 win = win + 1
+                print("win")
             elif winner == -1:
                 draw = draw + 1
+                print("draw")
             else:
                 loss = loss + 1
+                print("loss")
         else:
             if winner == 1:
                 loss = loss + 1
+                print("loss")
             elif winner == -1:
                 draw = draw + 1
+                print("draw")
             else:
                 win = win + 1
-        print(i+1)
+                print("win")
+
+        if win!=0:
+            win_rate= win / (win+loss)
+            print("win rate: ",win_rate*100,"%")
+        #print(i+1)
         #print("Winner is: ", winner)
         #win_rate = win / (win+loss)
         #draw_rate = draw / (i+1)
@@ -188,12 +198,12 @@ if __name__ == '__main__':
     #        if reward[0]>0:
     #            #print(key,"-> reward0-> ",value)
     #            break
-    for key,value in training_agent.q.items():
-        if key.count(-1)==16:
-            print(training_agent.q[tuple(key)])
+    #for key,value in training_agent.q.items():
+    #    if key.count(-1)==16:
+    #        print(training_agent.q[tuple(key)])
 
-    state=[-1]*17
-    print(training_agent.q[tuple(state)])
+    #state=[-1]*17
+    #print(training_agent.q[tuple(state)])
     
     """
     print("Evaluation vs Random")
@@ -234,13 +244,13 @@ if __name__ == '__main__':
     """
     print("Evaluation minimax-4 vs minimax-4-RL")
     game = quarto.Quarto()
-    player0=MinimaxPlayer(game)
+    player0=MinmaxPlayer2(game)
     player0.MINMAX_DEPTH=4
-    assert player0.MINMAX_DEPTH==4
-    player1=MinimaxPlayer(game,withRL=True)
-    assert player1.MINMAX_DEPTH==4
-    num_matches = 100
-    cycles=20
+    #assert player0.MINMAX_DEPTH==4
+    player1=MinmaxPlayer2(game,withRL=True)
+    #assert player1.MINMAX_DEPTH==4
+    num_matches = 10
+    cycles=5
     for i in range(cycles):
         win_rate=eval(game, player0,player1, num_matches) #player0 for testing, player1 for training
         print("cycle eval ", i+1," win rate: ",win_rate*100,"%")
