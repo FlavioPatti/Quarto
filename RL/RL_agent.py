@@ -5,8 +5,10 @@ import copy
 import pickle
 import math
 import sys
-#Implementation of a classic reinforcement learning algorithm
+'''Implementation of a classic reinforcement learning algorithm'''
 class RL_Agent(quarto.Player):
+    '''In our case, to compress informations, the action that place a piece and the action that choose a piece for the opponent are unified,
+    So the upper bound of the number of the possible actions will be 16(number of places)*16(number of pieces). That's the reason of an action space of 256'''
     action_space = 256
     WIN_REWARD, LOSS_REWARD =   100, -1 #1, -1
     DRAW_REWARD=1
@@ -28,8 +30,6 @@ class RL_Agent(quarto.Player):
         self.discount_factor = discount_factor # gamma     -> the higher gamma,    the more I favor long-term reward
         if self.pretrained==True:
             self.load()     
-        # as I get closer and closer to the deadline, my preference for near-term reward should increase, 
-        # which means my gamma should decrease.
 
     def choose_piece(self):
         if self.get_game().get_selected_piece()==-1:
@@ -51,7 +51,6 @@ class RL_Agent(quarto.Player):
             for xp in yp:
                 state.append(xp)
         state.append(self.get_game().get_selected_piece())
-        #print(state)
         if self.train_mode:
             current_action=self.update_state_history(state)
         else:
@@ -61,10 +60,11 @@ class RL_Agent(quarto.Player):
         pos=current_action//16
         y=pos//4
         x=pos%4
-        #print(x , "-" , y)
         return (x,y)
 
     def make_and_get_action_values(self, state, possActions):
+        '''If I'm in training phase if I've never visited a state, I create it initializing the rewards to 0
+        If i'm in test phase I take the rewards of the actions of a state, and if that state isn't in the q-table, I return a list of 0s as reward'''
         state=tuple(state)
         def_list=[]
         if self.train_mode==True:
@@ -72,7 +72,8 @@ class RL_Agent(quarto.Player):
         return self.q.get(state, np.zeros(self.action_space))[possActions]
 
     def is_terminal(self):
-        '''returns True if the state is terminal'''
+        '''CURRENTLY UNUSED
+        returns True if the state is terminal'''
         return self.get_game().check_finished() or self.get_game().check_winner()>=0
 
     def getActions(self, state):
@@ -82,18 +83,15 @@ class RL_Agent(quarto.Player):
             return [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
         all_pieces={ x for x in range(len(state)-1)}
         available_pieces=list(all_pieces - set(state))
-        # per evitare bug quando si sta per fare l'ultima mossa che porterà a un draw!
+        #To avoid a bug when I'm about to do the last move that will lead to a draw
         if available_pieces==[]:
             available_pieces.append(0)
         available_positions=[]
-        #print("available pieces: ", available_pieces)
         for i, o in enumerate(state):
             if o==-1:
                 available_positions.append(i)
-        #print("available positions: ", available_positions)
         possible_actions = [
             16 * pos + piece for pos in available_positions for piece in available_pieces]
-        #print("possible actions: ", possible_actions)
         return possible_actions
 
 
@@ -101,8 +99,7 @@ class RL_Agent(quarto.Player):
         '''Policy
         This function takes a state and chooses the action for that state that will lead to the maximum reward'''
         possActions = self.getActions(state)
-        action_values = self.make_and_get_action_values(state, possActions)
-        #if self.train_mode==True: 
+        action_values = self.make_and_get_action_values(state, possActions) 
         if self.train_mode==True:
             '''Optimization
             If an action that I can do from a state can make me win, I choose that, so I avoid exploring unuseful states'''
@@ -143,14 +140,15 @@ class RL_Agent(quarto.Player):
         
    
     def update_state_history(self, state):
-    
+        '''Choose the action and updates the state hystory'''
         current_action = self.policy(state)
         self.state_history.append((state, current_action))
 
         return current_action
 
     def learn(self, winner):
-        
+        """Called only at the end of a match and only for training.
+        Spread the rewards of the final states and updates epsilon"""
         if winner==1:
             target=self.WIN_REWARD
         elif winner==0:
@@ -170,12 +168,13 @@ class RL_Agent(quarto.Player):
 
 
     def save(self):
-        # Save the q-table on the disk for future use 
+        '''Save the q-table on the disk for future use'''
         with open('player.bin', 'wb') as f:
             pickle.dump(dict(self.q), f, protocol=4)
       
             
 
     def load(self):
+        '''load the q-table already saved if I don't have to train from scratch'''
         with open('player.bin', 'rb') as f:
             self.q=pickle.load(f)

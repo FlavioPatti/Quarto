@@ -7,7 +7,6 @@ from RL.QL_agent import QL_Agent
 from RL.RL_agent import RL_Agent
 from RL.RL_agent2 import RL_Agent2
 from RL.QL_agent2 import QL_Agent2
-from montecarlo.montecarlo import MonteCarloPlayer
 from main import RandomPlayer
 from main import RiskyPlayer
 from main import GeneticPlayer
