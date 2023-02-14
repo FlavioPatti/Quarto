@@ -7,7 +7,7 @@ import random
 import quarto
 import copy
 from EA.genetic_algorithm import GeneticAlgorithm
-from risky_algorithm import RiskyAlgorithm
+from Risky.risky_algorithm import RiskyAlgorithm
 import numpy as np
 
 class RandomPlayer(quarto.Player):
@@ -28,12 +28,11 @@ class RandomPlayer(quarto.Player):
     
    
 class RiskyPlayer(quarto.Player):
-    """Risky player2"""
+    """Risky player"""
     
     def __init__(self, quarto: quarto.Quarto):
         #super().__init__(quarto)
         self.risky = RiskyAlgorithm(quarto)
-
 
     def choose_piece(self):
         return self.risky.choose_piece()
@@ -52,60 +51,43 @@ class GeneticPlayer(quarto.Player):
         self.pos_chosen = None
 
     def choose_piece(self):
-        if self.get_game().get_selected_piece()==-1:
-            return random.randint(0,15)
-        print("G chooses piece - ", self.piece_to_give)
+        (self.piece_to_give, self.pos_chosen) = self.geneticAlgorithm.my_move()
         return self.piece_to_give
 
     def place_piece(self):
         (self.piece_to_give, self.pos_chosen) = self.geneticAlgorithm.my_move()
-        print("G chooses pos - ", self.pos_chosen)
         return self.pos_chosen
 
-
-    
-class GeneticPlayer(quarto.Player):
-    """GA player"""
-
-    def __init__(self, quarto: quarto.Quarto):
-        #super().__init__(quarto)
-        self.geneticAlgorithm = GeneticAlgorithm(quarto)
-
-        self.piece_to_give = None
-        self.pos_chosen = None
-
-    def choose_piece(self):
-        # How to handle first case??
-        #print("G chooses piece - ", self.piece_to_give)
-        return self.piece_to_give
-
-    def place_piece(self):
-        (self.piece_to_give, self.pos_chosen) = self.geneticAlgorithm.my_move()
-        #print("G chooses pos - ", self.pos_chosen)
-        return self.pos_chosen
 
 
 def main():
     win = 0
     draw = 0
     loss = 0
-    num_matches = 3000
-    game = quarto.Quarto()
-    player1=QL_Agent(game)
+    num_matches = 1
+    Xsecondo = True
     
     for i in range(num_matches):
+        game = quarto.Quarto()
         
-        game.reset()
-        #print("-------- PARTITA ", i)
-        game.set_players((RandomPlayer(game), player1)) #player 0 = random = avversario, player 1 = risky = io
+        #game.set_players((GeneticPlayer(game), RandomPlayer(game)))
+        game.set_players((RandomPlayer(game), RiskyAlgorithm(game)))  
         winner = game.run()
-        player1.epsilon=max(player1.epsilon*player1.epsilon_decay,player1.min_epsilon)
-        if winner == 1:
-            win = win + 1
-        elif winner == -1:
-            draw = draw + 1
+        if Xsecondo:
+            if winner == 1:
+                win = win + 1
+            elif winner == -1:
+                draw = draw + 1
+            else:
+                loss = loss + 1
         else:
-            loss = loss + 1
+            if winner == 0:
+                win = win + 1
+            elif winner == -1:
+                draw = draw + 1
+            else:
+                loss = loss + 1
+        
         #print("Winner is: ", winner)
         win_rate = win / (i+1)
         draw_rate = draw / (i+1)
@@ -114,10 +96,10 @@ def main():
             print(f"Match # {i} -> Winner -> {type(game._Quarto__players[winner]).__name__} -> Win rate = {win_rate}, Draw rate = {draw_rate} Loss rate = {loss_rate}")
         else:
             print(f"Match # {i} -> Winner -> Both -> Win rate = {win_rate}, Draw rate = {draw_rate} Loss rate = {loss_rate}")
-    #print(player1.q)
-    print(player1.epsilon)        
+        
     win_rate = win / num_matches
     print(f"Win rate = {win_rate}")
+
 
 
 
