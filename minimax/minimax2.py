@@ -9,11 +9,8 @@ import sys
 class MinmaxPlayer2(quarto.Player):
     """Minimax player"""
     action_space = 256
-    # move type constants
     MY_TOURN = 1
-    # Minmax depth
     MINMAX_DEPTH = 1
-    MAX_DEPTH = 3
 
     def __init__(self, quarto: quarto.Quarto, withRL=False):
         super().__init__(quarto)
@@ -68,22 +65,34 @@ class MinmaxPlayer2(quarto.Player):
         return self.pos_chosen
 
     def move(self):
+        '''
+         Returns position of selected piece and the piece selected for the opponent.
+         Action is an integer number from 0 to 256 that represents both actions. 
+
+        '''
 
         action = self.minmax_move()
         
         action_pos = action // 16
         action_piece = action % 16
 
-        #print(f"pos: {self.__action_to_pos(action_pos)}, piece: {action_piece}")
         return  self.__action_to_pos(action_pos), action_piece
     
     def __action_to_pos(self, pos):
+        '''
+         "pos" is an integer from 0 to 16 that represents the position on the board, this function converts that number to coordinate
+          and swaps them to fit with Quarto class in objects.py 
+        '''
         x = pos//4  
         y = pos%4 
         return (y,x) 
 
     
     def __validActions(self, state):
+        '''
+         Returns the list of actions available from the current stat
+
+        '''
         available_pieces = list(set(range(16)) - set(state))
         if len(available_pieces) == 0:
             available_pieces = [state[16]]
@@ -92,6 +101,12 @@ class MinmaxPlayer2(quarto.Player):
         return  [16 * pos + piece for pos in available_positions for piece in available_pieces]
     
     def __state_to_avlState(self, state, sel_piece):
+        '''
+        From board and selected piece return the state used by this algorithm, a list of 17 elements
+        where the first 16 correspond to the board and the last one corresponds to the piece selected by the opponent
+
+        '''
+
         return list(np.concatenate((state.ravel(),np.array([sel_piece]))))
 
     def __tmpMove(self, ply):
@@ -135,6 +150,12 @@ class MinmaxPlayer2(quarto.Player):
         return action
 
     def minmax_move(self):
+
+        '''
+            this function first looks to see if it can win by simply placing the given piece in one of the positions in the board,
+            if it does not win it executes the minmax which returns the action with the largest reward. 
+            If the reward is 0 check the RL table to see if there is a better action.
+        '''
         
         game_copy=quarto.Quarto()
         game_copy._board=self.current_game.get_board_status()
@@ -151,24 +172,9 @@ class MinmaxPlayer2(quarto.Player):
 
 
         state = self.__state_to_avlState(game_copy._board, game_copy.get_selected_piece())
-
-        count = 0
-        self.MINMAX_DEPTH = 1
-        for i in state:
-            if i != -1:
-                count += 1
-                if count == 3:
-                    self.MINMAX_DEPTH = 2
-                if count == 9:
-                    self.MINMAX_DEPTH = 3
-                if count == 11:
-                    self.MINMAX_DEPTH = 4
-                
-                # if self.MINMAX_DEPTH >= self.MAX_DEPTH:
-                #     self.MINMAX_DEPTH = self.MAX_DEPTH
-                #     break;
         
-        #print(f'depth: {self.MINMAX_DEPTH}')
+        self.minmaxPolicy(state)
+                
         if self.withRL==True:
             losingMoves=[]
             action,reward=self.minmax(game_copy,losingMoves=losingMoves)
@@ -202,6 +208,24 @@ class MinmaxPlayer2(quarto.Player):
             return current_action
         #print("action: ", action)
         return action
+    
+    def minmaxPolicy(self, state):
+        '''
+            Set the max depth of minmax based on state, the fewer pieces missing from the board 
+            the greater the maximum depth.
+        '''
+
+        count = 0
+        self.MINMAX_DEPTH = 1
+        for i in state:
+            if i != -1:
+                count += 1
+                if count == 3:
+                    self.MINMAX_DEPTH = 2
+                if count == 9:
+                    self.MINMAX_DEPTH = 3
+                if count == 11:
+                    self.MINMAX_DEPTH = 4
 
     def __isDraw(self, game):
         state = self.__state_to_avlState(game._board, game.get_selected_piece())
@@ -228,7 +252,7 @@ class MinmaxPlayer2(quarto.Player):
             elif self.__isDraw(game): # if it's a tie return 0.5
                 return 0.5
 
-            # if I didn't win, return -1
+            # if I didn't win, return 0
             return 0
         else:
             # opponent just placed. Did I lose?
@@ -238,65 +262,16 @@ class MinmaxPlayer2(quarto.Player):
             elif self.__isDraw(game): # if it's a tie return 0.5
                 return 0.5
 
-            # if I didn't win, return -1
+            # if I didn't win, return 0
             return 0
     
-    # def minmax(self, game, deep = 0, tourn = -1, alpha = -math.inf , beta = math.inf): #0 - my tourn, 1 - opponent-tourn
-        
-    #     val = self.__evaluate_move(game, tourn)
-
-    #     state = self.__state_to_avlState(game.get_board_status(), game.get_selected_piece())
-    #     possible_moves = self.__validActions(state)
-        
-
-    #     if val != -1 or not possible_moves:
-    #         return None, val
-
-    #     evaluations = list()
-        
-    #     #deep pruning
-    #     if deep >= self.MINMAX_DEPTH:
-    #         #game._Quarto__selected_piece_index = game.savePiece
-    #         return None, -1
-
-    #     tmp = copy.deepcopy(game)
-    #     bestval = -math.inf
-    #     for ply in possible_moves:
-    #         #print('***************************** choose move *****************************')
-    #         #print(f"deep: {deep}")
-            
-    #         piece, (x,y) = self.__tmpMove(ply)
-    #         tmp.place(x,y)
-    #         tmp._Quarto__selected_piece_index = piece
-
-    #         _ , val = self.minmax(tmp, deep+1, (tourn+1)%2, alpha, beta)
-
-    #         evaluations.append((ply, val))
-
-    #         if val == 0:
-    #             break
-
-    #         bestval = max(bestval, val)
-    #         alpha = max(alpha, bestval)
-
-    #         if beta < alpha:
-    #             break
-
-    #         tmp._Quarto__selected_piece_index = game._Quarto__selected_piece_index
-    #         self.__unplace(tmp, x,y)
-            
-            
-
-    #     #print(f'eval:{evaluations}')
-    #     if deep%2 == 0:
-    #         m = max(evaluations, key=lambda k: k[1])
-    #     else:
-    #         m = min(evaluations, key=lambda k: k[1])
-
-    #     return m
 
     def minmax(self, game, deep = 0, maximizingPlayer = True, alpha = -math.inf , beta = math.inf, losingMoves=[]): #0 - my tourn, 1 - opponent-tourn
-    
+
+        '''
+            Implementation of minmax with alpha-beta pruning
+        '''
+
         val = self.__evaluate_move(game, deep%2)
 
         state = self.__state_to_avlState(game.get_board_status(), game.get_selected_piece())
@@ -310,7 +285,6 @@ class MinmaxPlayer2(quarto.Player):
         
         #deep pruning
         if deep >= self.MINMAX_DEPTH:
-            #game._Quarto__selected_piece_index = game.savePiece
             return None, 0
 
         tmp = copy.deepcopy(game)
@@ -319,8 +293,6 @@ class MinmaxPlayer2(quarto.Player):
 
             maxVal = -math.inf
             for ply in possible_moves:
-                #print('***************************** choose move *****************************')
-                #print(f"deep: {deep}")
                 
                 piece, (x,y) = self.__tmpMove(ply)
                 tmp.place(x,y)
@@ -333,9 +305,6 @@ class MinmaxPlayer2(quarto.Player):
                     if deep==0 and val==-1:
                         losingMoves.append(ply)
 
-                # if val == 0:
-                #     break
-
                 maxVal = max(maxVal, val)
                 alpha = max(alpha, maxVal)
 
@@ -344,18 +313,13 @@ class MinmaxPlayer2(quarto.Player):
 
                 tmp._Quarto__selected_piece_index = game._Quarto__selected_piece_index
                 self.__unplace(tmp, x,y)
-                
-            # if deep == 0:
-            #     print()
-            m = max(evaluations, key=lambda k: k[1])
-            return m
+
+            return max(evaluations, key=lambda k: k[1])
         
         else: 
 
             minVal = math.inf
             for ply in possible_moves:
-                #print('***************************** choose move *****************************')
-                #print(f"deep: {deep}")
                 
                 piece, (x,y) = self.__tmpMove(ply)
                 tmp.place(x,y)
@@ -374,12 +338,7 @@ class MinmaxPlayer2(quarto.Player):
                 tmp._Quarto__selected_piece_index = game._Quarto__selected_piece_index
                 self.__unplace(tmp, x,y)
                 
-
-            # if deep == 1:
-            #     print()
-
-            m = min(evaluations, key=lambda k: k[1])
-            return m
+            return min(evaluations, key=lambda k: k[1])
 
     def load_qtable(self):
         with open('player.bin', 'rb') as f:
