@@ -45,6 +45,9 @@ class MinmaxPlayer(quarto.Player):
             return possActions[ind]
     
     def get_action_values(self, state, possActions):
+        '''
+        returns the action value for each possible action of a certain state
+        '''
         state=tuple(state)
         return self.q.get(state, np.zeros((self.action_space,2)))[possActions]
 
@@ -90,7 +93,7 @@ class MinmaxPlayer(quarto.Player):
     
     def __validActions(self, state):
         '''
-         Returns the list of actions available from the current stat
+         Returns the list of actions available from the current state
 
         '''
         available_pieces = list(set(range(16)) - set(state))
@@ -110,6 +113,10 @@ class MinmaxPlayer(quarto.Player):
         return list(np.concatenate((state.ravel(),np.array([sel_piece]))))
 
     def __tmpMove(self, ply):
+        '''
+        Temporary move used by minmax function
+
+        '''
         action_pos = ply // 16
         action_piece = ply % 16
 
@@ -186,16 +193,16 @@ class MinmaxPlayer(quarto.Player):
                 return action
             all_pieces={ x for x in range(len(state)-1)}
             available_pieces=list(all_pieces - set(state))
-            # per evitare bug quando si sta per fare l'ultima mossa che porterà a un draw!
+            # To avoid bugs when you are about to make the last move that will lead to a draw
             if available_pieces==[]:
                 available_pieces.append(0)
             
             available_positions=[]
-            #print("available pieces: ", available_pieces)
+
             for i, o in enumerate(state):
                 if o==-1:
                     available_positions.append(i)
-            #print("available positions: ", available_positions)
+
             possActions = [
                 16 * pos + piece for pos in available_positions for piece in available_pieces]
             possActions=list(set(possActions)-set(losingMoves))
@@ -203,10 +210,8 @@ class MinmaxPlayer(quarto.Player):
                 current_action=self.policy(state,possActions)
             else:
                 return losingMoves[0]
-            #print("possible actions: ", possible_actions)    
-            #print("current action: ",current_action)
+
             return current_action
-        #print("action: ", action)
         return action
     
     def minmaxPolicy(self, state):
@@ -266,7 +271,7 @@ class MinmaxPlayer(quarto.Player):
             return 0
     
 
-    def minmax(self, game, deep = 0, maximizingPlayer = True, alpha = -math.inf , beta = math.inf, losingMoves=[]): #0 - my tourn, 1 - opponent-tourn
+    def minmax(self, game, deep = 0, maximizingPlayer = True, alpha = -math.inf , beta = math.inf, losingMoves=[]): 
 
         '''
             Implementation of minmax with alpha-beta pruning
