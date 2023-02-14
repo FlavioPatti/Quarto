@@ -1,5 +1,3 @@
-import logging
-import argparse
 import random
 import quarto
 import math
@@ -8,317 +6,23 @@ import numpy as np
 import pickle
 import sys
 
-self_choose_cache = dict()  # state: score
-self_place_cache = dict()
-opponent_choose_cache = dict()
-opponent_place_cache = dict()
-
-
-# IDEA: if there are three in a row (win opportunity) and I can place a piece
-# that doesn't lead to a win, keep it for later (unless all next choices are losing). 
-class MinimaxPlayer(quarto.Player):
+class MinmaxPlayer(quarto.Player):
     """Minimax player"""
     action_space = 256
-    # move type constants
-    SELF_CHOOSE = 0
-    SELF_PLACE = 1
-    OPPONENT_CHOOSE = 2 
-    OPPONENT_PLACE = 3
-    # Minmax depth
-    MINMAX_DEPTH = 4
+    MY_TOURN = 1
+    MINMAX_DEPTH = 1
 
-    def __init__(self, quarto: quarto.Quarto, cache_file=None, withRL=False) -> None:
+    def __init__(self, quarto: quarto.Quarto, withRL=False):
         super().__init__(quarto)
         self.withRL=withRL
         self.current_game = quarto
         self.current_game._board = quarto._board
-        if cache_file is not None:
-            # load cache
-            load_cache(cache_file)
+        self.piece_to_give = None
+        self.pos_chosen = None
         if self.withRL==True:
             self.q = {}
-            self.place=None
             
             self.load_qtable()
-            
-    
-    def get_game(self):
-        # override
-        return self.current_game
-    
-    # custom quarto methods
-    def try_select(self, game, pieceIndex: int) -> bool:
-        '''
-        try to select a piece. Returns True on success
-        '''
-        if pieceIndex not in game._board:
-            return True
-        return False
-    
-    def try_place(self, game, x: int, y: int) -> bool:
-        '''
-        Verify if a piece is placeable but don't actually place it 
-        '''
-        if game._Quarto__placeable(x, y):
-            return True
-        return False
-    
-    def unplace(self, game, x: int, y: int) -> bool:
-        '''
-        Take away piece in coordinates (x, y). Returns true on success
-        '''
-        game._board[y, x] = -1
-        game._Quarto__binary_board[y,
-                            x][:] = np.nan
-        return True
-    
-    # provided methods
-    def choose_piece(self) -> int:
-        # move = self.choose_move_minimax(self.SELF_CHOOSE)
-        move = self.choose_move_alphabeta(self.SELF_CHOOSE)
-        return move
-
-    def place_piece(self) -> tuple[int, int]:
-        # move = self.choose_move_minimax(self.SELF_PLACE)
-        move = self.choose_move_alphabeta(self.SELF_PLACE)
-        return move
-
-
-    # custom methods
-    def check_win(self, game, piece=-1):
-        ''' Check if the player can win by placing the assigned piece. returns (x, y). If there is no winning move: returns (-1, -1)'''
-        if piece >= 0:
-            game.select(piece)
-        # else: piece is already chosen, do nothing
-        winning_x = -1
-        winning_y = -1
-        for x in range(game.BOARD_SIDE):
-            for y in range(game.BOARD_SIDE):
-                # try to place piece in every possible position, return the first that wins.
-                if game.place(x, y):
-                    # perform victory check
-                    if game.check_winner() >= 0:
-                        winning_x = x
-                        winning_y = y
-                        self.unplace(game, x,y)
-                        return winning_x, winning_y
-                    self.unplace(game, x, y)
-        return winning_x, winning_y
-
-    def make_choosing_move(self, game):
-        ''' Check if the player can lose by choosing a piece. Returns (move, score)'''
-        safe_moves = list()
-        for i in range(16):
-            if game.select(i):
-                # check if the opponent can win if I choose this piece
-                xx, yy = self.check_win(game, i)
-                if xx < 0 and yy < 0: # the opponent can't win
-                    # there is no winning move for the opponent using this piece
-                    safe_moves.append(i)
-        if len(safe_moves) > 0:
-            return random.choice(safe_moves), 0
-        return random.randint(0, 15), -1
-
-    def make_placing_move(self, game):
-        # if there's a winning move, do that. otherwise random move
-        move = self.check_win(game)
-        if move == (-1, -1):
-        # choose random (eligible) move
-            x, y = random.randint(0, 3), random.randint(0, 3)
-            while not self.try_place(game, x, y):
-                x, y = random.randint(0, 3), random.randint(0, 3)
-            return (x, y), 0
-        return move, 1
-    
-    """
-    def choose_move_minimax(self, move_type):
-        # for each possible move: compute minimax score
-        # play the maximum scoring move
-        game=quarto.Quarto()
-        game._board=self.get_game().get_board_status()
-        game._Quarto__selected_piece_index=self.get_game().get_selected_piece()
-        game._current_player=self.get_game().get_current_player()
-        game._Quarto__binary_board=copy.deepcopy(self.get_game()._Quarto__binary_board)
-        if move_type == self.SELF_CHOOSE:
-            # explore all possible choosing moves
-            valid_choices = self.get_valid_choices(game)
-            winning_choices = list()
-            draw_choices = list()
-            losing_choices = list()
-            for choice in valid_choices:
-                game.select(choice)
-                # run minimax
-                score = self.minimax(game, self.MINMAX_DEPTH, self.SELF_CHOOSE)
-                if score == 1:
-                    winning_choices.append(choice)
-                elif score == 0:
-                    draw_choices.append(choice)
-                else:
-                    losing_choices.append(choice)
-            # finally choose a move.
-            if len(winning_choices) > 0:
-                return random.choice(winning_choices)
-            if len(draw_choices) > 0:
-                return random.choice(draw_choices)
-            if len(losing_choices) > 0:
-                return random.choice(losing_choices)
-            # if I'm here, something went wrong
-            randomchoice = random.randint(0, 15)
-            while not self.try_select(game, randomchoice):
-                randomchoice = random.randint(0, 15)
-            return randomchoice
-            
-        elif move_type == self.SELF_PLACE:
-            # explore all possible placing moves
-            possible_moves = self.get_valid_placements(game)
-            winning_moves = list()
-            draw_moves = list()
-            losing_moves = list()
-            for (x, y) in possible_moves:
-                game.place(x, y)
-                score = self.minimax(game, self.MINMAX_DEPTH, self.SELF_PLACE)
-                self.unplace(game, x, y)
-                if score == 1:
-                    winning_moves.append((x, y))
-                elif score == 0:
-                    draw_moves.append((x, y))
-                elif score == -1:
-                    losing_moves.append((x, y))
-            # finally choose a move.
-            if len(winning_moves) > 0:
-                return random.choice(winning_moves)
-            if len(draw_moves) > 0:
-                return random.choice(draw_moves)
-            if (len(losing_moves) > 0):
-                return random.choice(losing_moves)
-            # I shouldn't be here
-            while not self.try_place(game, x, y):
-                x, y = random.randint(0, 3), random.randint(0, 3)
-            return (x, y)
-    """
-    def choose_move_alphabeta(self, move_type):
-        # for each possible move: compute minimax score
-        # play the maximum scoring move
-        game=quarto.Quarto()
-        game._board=self.get_game().get_board_status()
-        game._Quarto__selected_piece_index=self.get_game().get_selected_piece()
-        game._current_player=self.get_game().get_current_player()
-        game._Quarto__binary_board=copy.deepcopy(self.get_game()._Quarto__binary_board)
-        if move_type == self.SELF_CHOOSE:
-            # explore all possible choosing moves
-            valid_choices = self.get_valid_choices(game)
-            winning_choices = list()
-            draw_choices = list()
-            losing_choices = list()
-            for choice in valid_choices:
-                game.select(choice)
-                # run minimax
-                score = self.alphabeta(game, self.MINMAX_DEPTH, -math.inf, math.inf, self.SELF_CHOOSE)
-                if score == 1:
-                    winning_choices.append(choice)
-                elif score == 0:
-                    draw_choices.append(choice)
-                else:
-                    losing_choices.append(choice)
-            
-            if len(winning_choices) > 0:
-                return random.choice(winning_choices)
-            if self.withRL==True:
-                # finally choose a move.
-                if self.get_game().get_selected_piece()==-1:
-                    possActions = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
-                    state=[-1]*17
-                    choose=self.policy(state,possActions)
-                    return choose
-                
-                #create state
-                board=self.get_game().get_board_status()
-                state=[]
-                for yp in board:
-                    for xp in yp:
-                        state.append(xp)
-                state.append(self.get_game().get_selected_piece())
-                #possible pieces
-                all_pieces={ x for x in range(len(state)-1)}
-                available_pieces=all_pieces - set(state)
-                available_pieces=available_pieces- set(losing_choices)
-                if available_pieces!=set():
-                    available_pieces=list(available_pieces)
-                    possActions = [16 * self.place + piece  for piece in available_pieces]
-                    action=self.policy(state,possActions)
-                    return action %16
-            if len(draw_choices) > 0:
-                return random.choice(draw_choices)
-            if len(losing_choices) > 0:
-                return random.choice(losing_choices)
-            # if I'm here, something went wrong
-            randomchoice = random.randint(0, 15)
-            while not self.try_select(game, randomchoice):
-                randomchoice = random.randint(0, 15)
-            return randomchoice
-            
-        elif move_type == self.SELF_PLACE:
-            # explore all possible placing moves
-            possible_moves = self.get_valid_placements(game)
-            winning_moves = list()
-            draw_moves = list()
-            losing_moves = list()
-            for (x, y) in possible_moves:
-                game.place(x, y)
-                score = self.alphabeta(game, self.MINMAX_DEPTH, -math.inf, math.inf, self.SELF_PLACE)
-                self.unplace(game, x, y)
-                if score == 1:
-                    winning_moves.append((x, y))
-                elif score == 0:
-                    draw_moves.append((x, y))
-                elif score == -1:
-                    losing_moves.append((x, y))
-            # finally choose a move.
-            if len(winning_moves) > 0:
-                place=random.choice(winning_moves)
-                if self.withRL==True:
-                    self.place=place
-                return place
-            if self.withRL==True:
-                #create state
-                board=self.get_game().get_board_status()
-                state=[]
-                for yp in board:
-                    for xp in yp:
-                        state.append(xp)
-                state.append(self.get_game().get_selected_piece())
-                #possible positions
-                available_positions=[]
-                for i, o in enumerate(state):
-                    if o==-1:
-                        available_positions.append(i)
-                losing_movess=[]
-                for x,y in losing_moves:
-                    poss=y*4+x
-                    losing_movess.append(poss)
-
-                available_positions=set(available_positions)-set(losing_movess)#--> da cambiareee
-                all_pieces={ x for x in range(len(state)-1)}
-                available_pieces=all_pieces - set(state)
-                if available_pieces!=set() and available_positions!=set():
-                    available_pieces=list(available_pieces)
-                    available_positions=list(available_positions)
-                    possActions = [16 * pos + piece  for pos in available_positions for piece in available_pieces]
-                    action=self.policy(state,possActions)
-                    pos=action//16
-                    self.place=pos
-                    y=pos//4
-                    x=pos%4
-                    return (x,y)
-
-            if len(draw_moves) > 0:
-                return random.choice(draw_moves)
-            if (len(losing_moves) > 0):
-                return random.choice(losing_moves)
-            # I shouldn't be here
-            while not self.try_place(game, x, y):
-                x, y = random.randint(0, 3), random.randint(0, 3)
-            return (x, y)
 
     def policy(self, state,possActions):
         '''Policy
@@ -339,278 +43,303 @@ class MinimaxPlayer(quarto.Player):
             return possActions[ind]
         else:
             return possActions[ind]
-
+    
     def get_action_values(self, state, possActions):
         state=tuple(state)
         return self.q.get(state, np.zeros((self.action_space,2)))[possActions]
 
-    def __evaluate_position(self, game, move_type) -> int:
-        ''' Returns the score of the given position. '''
-        # evaluate score of the position based on turn
-        if move_type == self.SELF_PLACE:
+    def choose_piece(self):
+        if self.withRL==True:
+            if self.get_game().get_selected_piece()==-1:
+                possActions = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+                state=[-1]*17
+                current_action=self.policy(state, possActions)
+                return current_action
+        if self.current_game.get_selected_piece() == -1:
+            return random.choice(range(15))
+
+        return self.piece_to_give
+
+    def place_piece(self):
+        self.pos_chosen, self.piece_to_give = self.move()
+        return self.pos_chosen
+
+    def move(self):
+        '''
+         Returns position of selected piece and the piece selected for the opponent.
+         Action is an integer number from 0 to 256 that represents both actions. 
+
+        '''
+
+        action = self.minmax_move()
+        
+        action_pos = action // 16
+        action_piece = action % 16
+
+        return  self.__action_to_pos(action_pos), action_piece
+    
+    def __action_to_pos(self, pos):
+        '''
+         "pos" is an integer from 0 to 16 that represents the position on the board, this function converts that number to coordinate
+          and swaps them to fit with Quarto class in objects.py 
+        '''
+        x = pos//4  
+        y = pos%4 
+        return (y,x) 
+
+    
+    def __validActions(self, state):
+        '''
+         Returns the list of actions available from the current stat
+
+        '''
+        available_pieces = list(set(range(16)) - set(state))
+        if len(available_pieces) == 0:
+            available_pieces = [state[16]]
+        available_positions = list(filter(lambda x: state[x] == -1,range(16)))
+
+        return  [16 * pos + piece for pos in available_positions for piece in available_pieces]
+    
+    def __state_to_avlState(self, state, sel_piece):
+        '''
+        From board and selected piece return the state used by this algorithm, a list of 17 elements
+        where the first 16 correspond to the board and the last one corresponds to the piece selected by the opponent
+
+        '''
+
+        return list(np.concatenate((state.ravel(),np.array([sel_piece]))))
+
+    def __tmpMove(self, ply):
+        action_pos = ply // 16
+        action_piece = ply % 16
+
+        return action_piece,  self.__action_to_pos(action_pos)
+    
+    def __unplace(self, game, x,y):
+        '''
+        Take away piece in coordinates (x, y). Returns true on success
+        '''
+        game._board[y, x] = -1
+        game._Quarto__binary_board[y,
+                            x][:] = np.nan
+        return True
+
+    def check_win(self, game, piece=-1):
+        ''' Check if the player can win by placing the assigned piece. returns (x, y). If there is no winning move: returns (-1, -1)'''
+        if piece >= 0:
+            game.select(piece)
+        # else: piece is already chosen, do nothing
+        winning_x = -1
+        winning_y = -1
+        for x in range(game.BOARD_SIDE):
+            for y in range(game.BOARD_SIDE):
+                # try to place piece in every possible position, return the first that wins.
+                if game.place(x, y):
+                    # perform victory check
+                    if game.check_winner() >= 0:
+                        winning_x = x
+                        winning_y = y
+                        self.__unplace(game, x,y)
+                        return winning_x, winning_y
+                    self.__unplace(game, x, y)
+        return winning_x, winning_y
+    
+    def from_move_to_action(self, x, y, piece = 0):
+        action_pos = y*4+x
+        action = action_pos*16 + piece
+        return action
+
+    def minmax_move(self):
+
+        '''
+            this function first looks to see if it can win by simply placing the given piece in one of the positions in the board,
+            if it does not win it executes the minmax which returns the action with the largest reward. 
+            If the reward is 0 check the RL table to see if there is a better action.
+        '''
+        
+        game_copy=quarto.Quarto()
+        game_copy._board=self.current_game.get_board_status()
+        game_copy._Quarto__selected_piece_index=self.current_game.get_selected_piece()
+        game_copy._current_player=self.current_game.get_current_player()
+        game_copy._Quarto__binary_board=copy.deepcopy(self.current_game._Quarto__binary_board)
+        game_copy.savePiece = self.current_game.get_selected_piece()
+
+        x,y = self.check_win(game_copy)
+
+        if (x,y) != (-1,-1):
+            action = self.from_move_to_action(x,y)
+            return action
+
+
+        state = self.__state_to_avlState(game_copy._board, game_copy.get_selected_piece())
+        
+        self.minmaxPolicy(state)
+                
+        if self.withRL==True:
+            losingMoves=[]
+            action,reward=self.minmax(game_copy,losingMoves=losingMoves)
+        else:
+            action,reward=self.minmax(game_copy)
+        #RL
+        if self.withRL==True:
+            if reward==1 or reward==0.5:
+                return action
+            all_pieces={ x for x in range(len(state)-1)}
+            available_pieces=list(all_pieces - set(state))
+            # per evitare bug quando si sta per fare l'ultima mossa che porterà a un draw!
+            if available_pieces==[]:
+                available_pieces.append(0)
+            
+            available_positions=[]
+            #print("available pieces: ", available_pieces)
+            for i, o in enumerate(state):
+                if o==-1:
+                    available_positions.append(i)
+            #print("available positions: ", available_positions)
+            possActions = [
+                16 * pos + piece for pos in available_positions for piece in available_pieces]
+            possActions=list(set(possActions)-set(losingMoves))
+            if possActions!=[]:
+                current_action=self.policy(state,possActions)
+            else:
+                return losingMoves[0]
+            #print("possible actions: ", possible_actions)    
+            #print("current action: ",current_action)
+            return current_action
+        #print("action: ", action)
+        return action
+    
+    def minmaxPolicy(self, state):
+        '''
+            Set the max depth of minmax based on state, the fewer pieces missing from the board 
+            the greater the maximum depth.
+        '''
+
+        count = 0
+        self.MINMAX_DEPTH = 1
+        for i in state:
+            if i != -1:
+                count += 1
+                if count == 3:
+                    self.MINMAX_DEPTH = 2
+                if count == 9:
+                    self.MINMAX_DEPTH = 3
+                if count == 11:
+                    self.MINMAX_DEPTH = 4
+
+    def __isDraw(self, game):
+        state = self.__state_to_avlState(game._board, game.get_selected_piece())
+        endgame = state.count(-1)==0
+
+        if endgame:
+            if game.check_winner() < 0:
+                return True
+            else:
+                return False
+        else:
+            return False
+
+
+    
+    def __evaluate_move(self, game, myTourn):
+        ''' Returns the score of the given state. '''
+
+        if myTourn:
             # I just placed! Did I win?
-            if game.check_winner() >= 0:
+            if  game.check_winner() >= 0:
                 return 1
+
+            elif self.__isDraw(game): # if it's a tie return 0.5
+                return 0.5
+
             # if I didn't win, return 0
             return 0
-        elif move_type == self.OPPONENT_PLACE:
+        else:
             # opponent just placed. Did I lose?
             if game.check_winner() >= 0:
                 return -1
-            # if I didn't lose, return 0
+
+            elif self.__isDraw(game): # if it's a tie return 0.5
+                return 0.5
+
+            # if I didn't win, return 0
             return 0
-        elif move_type == self.SELF_CHOOSE:
-            # I just chose! can opponent win?
-            _, score = self.make_placing_move(game)
-            return -score
-        elif move_type == self.OPPONENT_CHOOSE:
-            # opponent just chose! Can I win?
-            _, score = self.make_placing_move(game)
-            return score
-    """
-    def minimax(self, current_state, depth, move_type) -> int:
-        # move_type: la mossa che è appena stata fatta
-        score = self.__evaluate_position(current_state,move_type)
-        if score == 1 or score == -1:
-            # Terminal node
-            # save to cache
-            hash = str(current_state.get_board_status())
-            if move_type == self.SELF_CHOOSE:
-                if hash not in self_choose_cache.keys():
-                    self_choose_cache[hash] = score
-            elif move_type == self.SELF_PLACE:
-                if hash not in self_place_cache.keys():
-                    self_place_cache[hash] = score
-            elif move_type == self.OPPONENT_CHOOSE:
-                if hash not in opponent_choose_cache.keys():
-                    opponent_choose_cache[hash] = score
-            else:
-                if hash not in opponent_place_cache.keys():
-                    opponent_place_cache[hash] = score
-            return score
-        if depth <= 0:
-           return 0
-        # else: recursively explore game tree
-        game = copy.deepcopy(current_state)
-        if move_type == self.SELF_CHOOSE:
-            # check if it's in cache
-            hash = str(current_state.get_board_status())
-            if hash in opponent_place_cache.keys():
-                return opponent_place_cache[hash]
-            score = math.inf
-            # get all possible moves
-            possible_moves = self.get_valid_placements(game)
-            for (x, y) in possible_moves:
-                game.place(x, y)
-                move_score = self.minimax(game, depth - 1, self.OPPONENT_PLACE) # OPPONENT JUST PLACED
-                score = min(move_score, score)
-                self.unplace(game, x, y)
-            # save to cache
-            opponent_place_cache[hash] = score
-            return score
-        
-        if move_type == self.OPPONENT_PLACE: # LUI HA APPENA PIAZZATO -> TOCCA A LUI SCEGLIERE
-            # check if it's in cache
-            hash = str(current_state.get_board_status())
-            if hash in opponent_choose_cache.keys():
-                return opponent_choose_cache[hash]
-            score = math.inf
-            # get all possible choices
-            possible_choices = self.get_valid_choices(game)
-            last_choice = game.get_selected_piece()
-            for choice in possible_choices:
-                game.select(choice)
-                choice_score = self.minimax(game, depth - 1, self.OPPONENT_CHOOSE) # HA APPENA SCELTO
-                score = min(choice_score, score)
-            # restore last piece
-            game.select(last_choice)
-            # save to cache
-            opponent_choose_cache[hash] = score
-            return score
-
-        if move_type == self.SELF_PLACE:  # HO APPENA PIAZZATO, ORA SCELGO
-            hash = str(current_state.get_board_status())
-            if hash in self_choose_cache.keys():
-                return self_choose_cache[hash]
-            score = -math.inf
-            # get all possible choices
-            possible_choices = self.get_valid_choices(game)
-            last_choice = game.get_selected_piece()
-            for choice in possible_choices:
-                game.select(choice)
-                choice_score = self.minimax(game, depth - 1, self.SELF_CHOOSE) # HO APPENA SCELTO
-                score = max(choice_score, score)
-            # restore last piece
-            game.select(last_choice)
-            # save to cache
-            self_choose_cache[hash] = score
-            return score
-        
-        if move_type == self.OPPONENT_CHOOSE: #OPPONENT HA APPENA SCELTO
-            # check if it's in cache
-            hash = str(current_state.get_board_status())
-            if hash in self_place_cache.keys():
-                return self_place_cache[hash]
-            score = -math.inf
-            # get all possible moves
-            possible_moves = self.get_valid_placements(game)
-            for (x, y) in possible_moves:
-                game.place(x, y)
-                move_score = self.minimax(game, depth - 1, self.SELF_PLACE) # piazzo io
-                score = max(move_score, score)
-                self.unplace(game, x, y)
-            # save to cache
-            self_place_cache[hash] = score
-            return score
-    """
-    def alphabeta(self, current_state, depth, alpha, beta, move_type) -> int:
-        # move_type: la mossa che è appena stata fatta
-        score = self.__evaluate_position(current_state,move_type)
-        if score == 1 or score == -1:
-            # Terminal node
-            # save to cache
-            hash = str(current_state.get_board_status())
-            if move_type == self.SELF_CHOOSE:
-                if hash not in self_choose_cache.keys():
-                    self_choose_cache[hash] = score
-            elif move_type == self.SELF_PLACE:
-                if hash not in self_place_cache.keys():
-                    self_place_cache[hash] = score
-            elif move_type == self.OPPONENT_CHOOSE:
-                if hash not in opponent_choose_cache.keys():
-                    opponent_choose_cache[hash] = score
-            else:
-                if hash not in opponent_place_cache.keys():
-                    opponent_place_cache[hash] = score
-            return score
-        if depth <= 0:
-           return 0
-        # else: recursively explore game tree
-        game = copy.deepcopy(current_state)
-        if move_type == self.SELF_CHOOSE:
-            # check if it's in cache
-            hash = str(current_state.get_board_status())
-            if hash in opponent_place_cache.keys():
-                return opponent_place_cache[hash]
-            score = math.inf # minimizing player's turn (opponent)
-            # get all possible moves
-            possible_moves = self.get_valid_placements(game)
-            for (x, y) in possible_moves:
-                game.place(x, y)
-                move_score = self.alphabeta(game, depth - 1, alpha, beta, self.OPPONENT_PLACE) # OPPONENT JUST PLACED
-                score = min(move_score, score)
-                beta = min(beta, score)
-                self.unplace(game, x, y)
-                if score <= alpha:
-                    break # alpha cutoff
-            # save to cache
-            opponent_place_cache[hash] = score
-            return score
-        
-        if move_type == self.OPPONENT_PLACE: # LUI HA APPENA PIAZZATO -> TOCCA A LUI SCEGLIERE
-            # check if it's in cache
-            hash = str(current_state.get_board_status())
-            if hash in opponent_choose_cache.keys():
-                return opponent_choose_cache[hash]
-            score = math.inf
-            # get all possible choices
-            possible_choices = self.get_valid_choices(game)
-            last_choice = game.get_selected_piece()
-            for choice in possible_choices:
-                game.select(choice)
-                choice_score = self.alphabeta(game, depth - 1, alpha, beta, self.OPPONENT_CHOOSE) # HA APPENA SCELTO
-                score = min(choice_score, score)
-                beta = min(beta, score)
-                if score <= alpha:
-                    break
-            # restore last piece
-            game.select(last_choice)
-            # save to cache
-            opponent_choose_cache[hash] = score
-            return score
-
-        if move_type == self.SELF_PLACE:  # HO APPENA PIAZZATO, ORA SCELGO
-            hash = str(current_state.get_board_status())
-            if hash in self_choose_cache.keys():
-                return self_choose_cache[hash]
-            score = -math.inf
-            # get all possible choices
-            possible_choices = self.get_valid_choices(game)
-            last_choice = game.get_selected_piece()
-            for choice in possible_choices:
-                game.select(choice)
-                choice_score = self.alphabeta(game, depth - 1, alpha, beta, self.SELF_CHOOSE) # HO APPENA SCELTO
-                score = max(choice_score, score)
-                alpha = max(alpha, score)
-                if score >= beta:
-                    break
-            # restore last piece
-            game.select(last_choice)
-            # save to cache
-            self_choose_cache[hash] = score
-            return score
-        
-        if move_type == self.OPPONENT_CHOOSE: #OPPONENT HA APPENA SCELTO
-            # check if it's in cache
-            hash = str(current_state.get_board_status())
-            if hash in self_place_cache.keys():
-                return self_place_cache[hash]
-            score = -math.inf
-            # get all possible moves
-            possible_moves = self.get_valid_placements(game)
-            for (x, y) in possible_moves:
-                game.place(x, y)
-                move_score = self.alphabeta(game, depth - 1, alpha, beta, self.SELF_PLACE) # piazzo io
-                score = max(move_score, score)
-                alpha = max(alpha, score)
-                self.unplace(game, x, y)
-                if score >= beta:
-                    break
-            # save to cache
-            self_place_cache[hash] = score
-            return score
-
-    def get_valid_choices(self, game):
-        all_choices = list(range(16))
-        valid_choices = list()
-        for choice in all_choices:
-            if self.try_select(game, choice):
-                valid_choices.append(choice)
-        return valid_choices
     
-    def get_valid_placements(self, game):
-        all_x = list(range(4))
-        all_y = list(range(4))
-        valid_moves = list()
-        for x in all_x:
-            for y in all_y:
-                if self.try_place(game, x, y):
-                    valid_moves.append((x, y))
-        return valid_moves
-    
+
+    def minmax(self, game, deep = 0, maximizingPlayer = True, alpha = -math.inf , beta = math.inf, losingMoves=[]): #0 - my tourn, 1 - opponent-tourn
+
+        '''
+            Implementation of minmax with alpha-beta pruning
+        '''
+
+        val = self.__evaluate_move(game, deep%2)
+
+        state = self.__state_to_avlState(game.get_board_status(), game.get_selected_piece())
+        possible_moves = self.__validActions(state)
+        
+
+        if val != 0 or not possible_moves:
+            return None, val
+
+        evaluations = list()
+        
+        #deep pruning
+        if deep >= self.MINMAX_DEPTH:
+            return None, 0
+
+        tmp = copy.deepcopy(game)
+
+        if maximizingPlayer: # my tourn
+
+            maxVal = -math.inf
+            for ply in possible_moves:
+                
+                piece, (x,y) = self.__tmpMove(ply)
+                tmp.place(x,y)
+                tmp._Quarto__selected_piece_index = piece
+
+                _ , val = self.minmax(tmp, deep+1, False, alpha, beta)
+
+                evaluations.append((ply, val))
+                if self.withRL==True:
+                    if deep==0 and val==-1:
+                        losingMoves.append(ply)
+
+                maxVal = max(maxVal, val)
+                alpha = max(alpha, maxVal)
+
+                if beta < alpha:
+                    break
+
+                tmp._Quarto__selected_piece_index = game._Quarto__selected_piece_index
+                self.__unplace(tmp, x,y)
+
+            return max(evaluations, key=lambda k: k[1])
+        
+        else: 
+
+            minVal = math.inf
+            for ply in possible_moves:
+                
+                piece, (x,y) = self.__tmpMove(ply)
+                tmp.place(x,y)
+                tmp._Quarto__selected_piece_index = piece
+
+                _ , val = self.minmax(tmp, deep+1, True, alpha, beta)
+
+                evaluations.append((ply, val))
+
+                minVal = min(minVal, val)
+                beta = min(alpha, minVal)
+
+                if beta < alpha:
+                    break
+
+                tmp._Quarto__selected_piece_index = game._Quarto__selected_piece_index
+                self.__unplace(tmp, x,y)
+                
+            return min(evaluations, key=lambda k: k[1])
+
     def load_qtable(self):
         with open('player.bin', 'rb') as f:
             self.q=pickle.load(f)
-    
-def save_cache(filename):
-    picklefile = open(filename, 'wb')
-    data = [self_place_cache, self_choose_cache, opponent_place_cache, opponent_choose_cache]
-    pickle.dump(data, picklefile)
-    picklefile.close()
-
-def load_cache(filename):
-    picklefile = open(filename, 'rb')
-    data = pickle.load(picklefile)
-    picklefile.close()
-    # overwrite existing cache
-    global self_place_cache
-    global self_choose_cache
-    global opponent_place_cache
-    global opponent_choose_cache
-
-    self_place_cache = data[0]
-    self_choose_cache = data[1]
-    opponent_place_cache = data[2]
-    opponent_choose_cache = data[3]
-
-    

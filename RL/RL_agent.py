@@ -5,7 +5,7 @@ import copy
 import pickle
 import math
 import sys
-
+#Implementation of a classic reinforcement learning algorithm
 class RL_Agent(quarto.Player):
     action_space = 256
     WIN_REWARD, LOSS_REWARD =   100, -1 #1, -1
@@ -15,16 +15,7 @@ class RL_Agent(quarto.Player):
         super().__init__(quarto)
         self.train_mode=train_mode
         self.pretrained=pretrained
-        #self.number_rewards=0 #FOR DEBUGGING
-        #q is a function f: State x Action -> R and is internally represented as a Map.
-
-        #alpha is the learning rate and determines to what extent the newly acquired 
-        #information will override the old information
-
-        #gamma is the discount rate and determines the importance of future rewards
-
-        #epsilon serves as the exploration rate and determines the probability 
-        #that the agent, in the learning process, will randomly select an action
+        
         self.q = {}
         if self.train_mode:
             self.state_history = []
@@ -86,8 +77,7 @@ class RL_Agent(quarto.Player):
 
     def getActions(self, state):
         '''returns a list of possible actions for a given state'''
-        #if self.is_terminal():
-        #    return [None]
+        
         if state.count(-1)==17:
             return [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
         all_pieces={ x for x in range(len(state)-1)}
@@ -114,7 +104,8 @@ class RL_Agent(quarto.Player):
         action_values = self.make_and_get_action_values(state, possActions)
         #if self.train_mode==True: 
         if self.train_mode==True:
-            
+            '''Optimization
+            If an action that I can do from a state can make me win, I choose that, so I avoid exploring unuseful states'''
             if self.get_game().get_selected_piece()!=-1:
                 game=quarto.Quarto()
                 game._board=self.get_game().get_board_status()
@@ -150,35 +141,7 @@ class RL_Agent(quarto.Player):
         # Highest reward -> Low exploration rate
             return possActions[np.argmax(action_values)]
         
-        #else:
-        """
-            smaller_adv_rew=math.inf
-            best_action=None
-            action_values=self.q.get(tuple(state), np.zeros(self.action_space))[possActions]
-            if np.max(action_values)==self.WIN_REWARD:
-                possActions[np.argmax(action_values)]
-
-            for action in possActions:
-                pos=action//16
-                piece=action%16
-                state[pos]=state[16]
-                state[16]=piece 
-                adv_actions=self.q.get(tuple(state), np.array([]))
-                if len(adv_actions)==0:
-                    continue
-                if np.count_nonzero(adv_actions==100)>0:
-                    continue
-                adv_rew=sum(adv_actions)
-                if adv_rew<smaller_adv_rew:
-                    best_action=action
-                    smaller_adv_rew=adv_rew
-                state[pos]=-1
-                state[16]=self.get_game().get_selected_piece()
-            if smaller_adv_rew==math.inf:
-                return possActions[0]
-            return best_action
-        """
-    # Updates the Q-table as specified by the standard Q-learning algorithm
+   
     def update_state_history(self, state):
     
         current_action = self.policy(state)

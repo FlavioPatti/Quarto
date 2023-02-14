@@ -3,8 +3,10 @@ import quarto
 import random
 import copy
 import pickle
-
-class QL_Agent4(quarto.Player):
+#The same QL_Agent but with a state_history instead of a previous state and action.
+#in this way i can update all the previous states when i know if I won or losed, 
+#not only the previuos
+class QL_Agent2(quarto.Player):
     action_space = 256
     WIN_REWARD, LOSS_REWARD, DRAW_REWARD =   10, -10, 1 #1, -1
 
@@ -12,16 +14,7 @@ class QL_Agent4(quarto.Player):
         super().__init__(quarto)
         self.train_mode=train_mode
         self.pretrained=pretrained
-        #self.number_rewards=0 #FOR DEBUGGING
-        #q is a function f: State x Action -> R and is internally represented as a Map.
-
-        #alpha is the learning rate and determines to what extent the newly acquired 
-        #information will override the old information
-
-        #gamma is the discount rate and determines the importance of future rewards
-
-        #epsilon serves as the exploration rate and determines the probability 
-        #that the agent, in the learning process, will randomly select an action
+       
         self.q = {}
         if self.train_mode:
             self.state_history = []
@@ -109,6 +102,8 @@ class QL_Agent4(quarto.Player):
         This function takes a state and chooses the action for that state that will lead to the maximum reward'''
         possActions = self.getActions(state)
         action_values = self.make_and_get_action_values(state, possActions)
+        '''Optimization
+            If an action that I can do from a state can make me win, I choose that, so I avoid exploring unuseful states'''
         if self.train_mode==True and self.get_game().get_selected_piece()!=-1:
             game=quarto.Quarto()
             game._board=self.get_game().get_board_status()
@@ -141,49 +136,8 @@ class QL_Agent4(quarto.Player):
 
         # Highest reward -> Low exploration rate
         return possActions[np.argmax(action_values)]
-    """
-    # Updates the Q-table as specified by the standard Q-learning algorithm
-    def update_q(self, state, winner=None):
-        if winner is not None:
-            current_action = self.previous_state = self.previous_action = None
-        else:
-      
-            self.makeKey(state)
-            current_action = self.policy(state)
-
-            if self.previous_action is not None:
-                reward=0
-                quarto_bis=copy.deepcopy(self.__quarto)
-                pos=current_action//16
-                y=pos//4
-                x=pos%4
-                quarto_bis.place(x,y)
-                if quarto_bis.check_winner()>-1:
-                    reward = self.WIN_REWARD
-                else:
-                    board=quarto_bis.get_board_status()
-                    for yi, yp in enumerate(board):
-                        for xi, xp in enumerate(yp):
-                            quarto_bis.select(current_action % 16)
-                            if xp==-1:
-                                quarto_bis.place(xi,yi)
-                                if quarto_bis.check_winner()>-1:
-                                    reward = self.LOSS_REWARD
-                                    break
-                                quarto_bis.select(-1)
-                                quarto_bis.place(xi,yi)
-
-                print(reward)
-                self.number_rewards+=1
-                maxQ = max(self.q[(tuple(state), a)] for a in self.getActions(state))
-                self.q[(tuple(self.previous_state), self.previous_action)] += \
-                    self.learning_rate * (reward + self.discount_factor * maxQ - \
-                        self.q[(tuple(self.previous_state), self.previous_action)])
-
-            self.previous_state, self.previous_action = tuple(state), current_action
-        return current_action
+    
         
-    """
     # Updates the Q-table as specified by the standard Q-learning algorithm
     def update_q(self, winner=None):
         #print("winner is: ", winner)

@@ -3,8 +3,8 @@ import quarto
 import random
 import copy
 import pickle
-
-class QL_Agent3(quarto.Player):
+#Implementation of the classic q-learning algorithm
+class QL_Agent(quarto.Player):
     action_space = 256
     WIN_REWARD, LOSS_REWARD, DRAW_REWARD =   100, -1, 1 #1, -1
 
@@ -12,16 +12,7 @@ class QL_Agent3(quarto.Player):
         super().__init__(quarto)
         self.train_mode=train_mode
         self.pretrained=pretrained
-        #self.number_rewards=0 #FOR DEBUGGING
-        #q is a function f: State x Action -> R and is internally represented as a Map.
-
-        #alpha is the learning rate and determines to what extent the newly acquired 
-        #information will override the old information
-
-        #gamma is the discount rate and determines the importance of future rewards
-
-        #epsilon serves as the exploration rate and determines the probability 
-        #that the agent, in the learning process, will randomly select an action
+       
         self.q = {}
         self.previous_state = None
         self.previous_action= None
@@ -102,7 +93,8 @@ class QL_Agent3(quarto.Player):
         This function takes a state and chooses the action for that state that will lead to the maximum reward'''
         possActions = self.getActions(state)
         action_values = self.make_and_get_action_values(state, possActions)
-        
+        '''Optimization
+            If an action that I can do from a state can make me win, I choose that, so I avoid exploring unuseful states'''
         if self.train_mode==True and self.get_game().get_selected_piece()!=-1:
             game=quarto.Quarto()
             game._board=self.get_game().get_board_status()
