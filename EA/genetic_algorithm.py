@@ -351,7 +351,7 @@ class GeneticAlgorithm():
                 
         for index in range(GENOME_SIZE//2):
             piece = genome[index]
-            coordinates = genome[GENOME_SIZE//2-index]
+            coordinates = genome[GENOME_SIZE//2+index]
             myTurn = True
             
             list = self.winning_pos(piece)
